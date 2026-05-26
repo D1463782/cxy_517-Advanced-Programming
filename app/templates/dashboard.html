@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% block title %}MathAlarm — 起床數據統計{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">📊 起床效率儀表板</h1>
+    <p class="page-subtitle">追蹤你的醒腦表現，量化早起習慣</p>
+</div>
+
+<!-- ─── 統計卡片 ─── -->
+<div class="stats-grid">
+    <div class="stat-card glass-card stat-total">
+        <div class="stat-icon">🌅</div>
+        <div class="stat-value">{{ stats.total_wakeups }}</div>
+        <div class="stat-label">總起床次數</div>
+    </div>
+    <div class="stat-card glass-card stat-time">
+        <div class="stat-icon">⏱️</div>
+        <div class="stat-value">{{ stats.avg_time_taken }}s</div>
+        <div class="stat-label">平均醒腦時間</div>
+    </div>
+    <div class="stat-card glass-card stat-wrong">
+        <div class="stat-icon">❌</div>
+        <div class="stat-value">{{ stats.total_wrong_attempts }}</div>
+        <div class="stat-label">總計算答錯</div>
+    </div>
+</div>
+
+<!-- ─── 趨勢圖表 ─── -->
+<section class="chart-section glass-card">
+    <h2 class="section-title">📈 最近 7 次醒腦時間趨勢</h2>
+    {% if stats.recent_trend %}
+    <div class="chart-container">
+        <canvas id="trendChart" width="700" height="300"></canvas>
+    </div>
+    {% else %}
+    <div class="chart-empty">
+        <p>📭 尚無起床記錄，開始使用鬧鐘後數據會自動出現！</p>
+    </div>
+    {% endif %}
+</section>
+
+<!-- ─── 歷史紀錄表格 ─── -->
+<section class="history-section glass-card">
+    <h2 class="section-title">📋 起床歷史紀錄</h2>
+    {% if records %}
+    <div class="table-wrapper">
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>響鈴時間</th>
+                    <th>解鎖時間</th>
+                    <th>耗時（秒）</th>
+                    <th>答錯次數</th>
+                    <th>難度</th>
+                    <th>備註</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in records %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ record.ring_time[:16] if record.ring_time else '-' }}</td>
+                    <td>{{ record.unlock_time[:16] if record.unlock_time else '-' }}</td>
+                    <td>
+                        <span class="time-badge {% if record.time_taken <= 30 %}fast{% elif record.time_taken <= 60 %}normal{% else %}slow{% endif %}">
+                            {{ record.time_taken }}s
+                        </span>
+                    </td>
+                    <td>{{ record.wrong_attempts }}</td>
+                    <td>
+                        <span class="diff-badge diff-{{ record.difficulty_faced }}">
+                            {% if record.difficulty_faced == 'easy' %}簡單
+                            {% elif record.difficulty_faced == 'medium' %}中等
+                            {% else %}困難{% endif %}
+                        </span>
+                    </td>
+                    <td>{{ record.alarm_note or '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="chart-empty">
+        <p>📭 尚無歷史記錄。完成第一次鬧鐘解題後即會顯示！</p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    // 繪製趨勢折線圖（使用原生 Canvas）
+    document.addEventListener('DOMContentLoaded', function() {
+        const trendData = {{ stats.recent_trend | tojson }};
+        if (!trendData || trendData.length === 0) return;
+
+        const canvas = document.getElementById('trendChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        // 高 DPI 支援
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.parentElement.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = 300 * dpr;
+        canvas.style.width = rect.width + 'px';
+        canvas.style.height = '300px';
+        ctx.scale(dpr, dpr);
+
+        const W = rect.width;
+        const H = 300;
+        const padding = { top: 30, right: 30, bottom: 50, left: 60 };
+        const chartW = W - padding.left - padding.right;
+        const chartH = H - padding.top - padding.bottom;
+
+        const values = trendData.map(d => d.time_taken);
+        const maxVal = Math.max(...values, 10);
+        const minVal = 0;
+
+        // 繪製背景格線
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= 5; i++) {
+            const y = padding.top + (chartH / 5) * i;
+            ctx.beginPath();
+            ctx.moveTo(padding.left, y);
+            ctx.lineTo(W - padding.right, y);
+            ctx.stroke();
+
+            // Y 軸標籤
+            const val = Math.round(maxVal - (maxVal / 5) * i);
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.font = '12px Inter';
+            ctx.textAlign = 'right';
+            ctx.fillText(val + 's', padding.left - 10, y + 4);
+        }
+
+        // 計算座標點
+        const points = values.map((v, i) => ({
+            x: padding.left + (chartW / (values.length - 1 || 1)) * i,
+            y: padding.top + chartH - (v / maxVal) * chartH
+        }));
+
+        // 繪製漸層填充
+        const gradient = ctx.createLinearGradient(0, padding.top, 0, H - padding.bottom);
+        gradient.addColorStop(0, 'rgba(139, 92, 246, 0.3)');
+        gradient.addColorStop(1, 'rgba(139, 92, 246, 0.01)');
+
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, H - padding.bottom);
+        points.forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.lineTo(points[points.length - 1].x, H - padding.bottom);
+        ctx.closePath();
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        // 繪製折線
+        ctx.beginPath();
+        ctx.strokeStyle = '#8B5CF6';
+        ctx.lineWidth = 3;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        points.forEach((p, i) => {
+            if (i === 0) ctx.moveTo(p.x, p.y);
+            else ctx.lineTo(p.x, p.y);
+        });
+        ctx.stroke();
+
+        // 繪製數據點
+        points.forEach((p, i) => {
+            // 外圈光暈
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(139, 92, 246, 0.2)';
+            ctx.fill();
+
+            // 內圈
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#8B5CF6';
+            ctx.fill();
+            ctx.strokeStyle = '#1a1a2e';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 數值標籤
+            ctx.fillStyle = '#e2e8f0';
+            ctx.font = 'bold 11px Inter';
+            ctx.textAlign = 'center';
+            ctx.fillText(values[i] + 's', p.x, p.y - 14);
+
+            // X 軸標籤
+            const label = trendData[i].unlock_time ? trendData[i].unlock_time.substring(5, 10) : '';
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.font = '11px Inter';
+            ctx.fillText(label, p.x, H - padding.bottom + 20);
+        });
+    });
+</script>
+{% endblock %}

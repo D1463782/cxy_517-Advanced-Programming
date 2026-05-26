@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚠️ 鬧鐘響起 — 立刻解題！</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="alarm-active-body">
+    <!-- 呼吸燈背景動畫 -->
+    <div class="breathing-bg"></div>
+    <div class="breathing-bg breathing-bg-2"></div>
+
+    <!-- ─── 鎖定畫面內容 ─── -->
+    <div class="lock-screen">
+        <!-- 狀態列 -->
+        <div class="lock-status-bar">
+            <div class="status-time" id="currentTime"></div>
+            <div class="status-difficulty">
+                {% if difficulty == 'easy' %}😊 簡單
+                {% elif difficulty == 'medium' %}🤔 中等
+                {% else %}🔥 困難{% endif %}
+                模式
+            </div>
+        </div>
+
+        <!-- 警報圖示 -->
+        <div class="alarm-alert-icon">
+            <div class="alert-ring"></div>
+            <div class="alert-ring alert-ring-2"></div>
+            <span class="alert-bell">🔔</span>
+        </div>
+
+        <h1 class="lock-title">⚠️ 鬧鐘響起！</h1>
+        <p class="lock-subtitle">
+            {% if alarm.note %}{{ alarm.note }} — {% endif %}
+            解出數學題才能關閉鬧鐘
+        </p>
+
+        <!-- 進度條 -->
+        <div class="progress-section">
+            <div class="progress-text">
+                答對進度：<span id="correctCount">{{ correct_count }}</span> / <span id="taskCount">{{ task_count }}</span>
+            </div>
+            <div class="progress-bar-track">
+                <div class="progress-bar-fill" id="progressBar"
+                     style="width: {{ (correct_count / task_count * 100) if task_count > 0 else 0 }}%"></div>
+            </div>
+        </div>
+
+        <!-- 數學題目區 -->
+        <div class="math-question-card glass-card" id="questionCard">
+            <div class="question-label">請計算：</div>
+            <div class="question-text" id="questionText">{{ question }}</div>
+            <div class="question-equals">＝ ？</div>
+        </div>
+
+        <!-- 答案輸入 -->
+        <div class="answer-section">
+            <input type="number" id="answerInput" class="answer-input"
+                   placeholder="輸入你的答案..." autofocus
+                   onkeydown="if(event.key==='Enter') MathAlarm.submitAnswer({{ alarm.id }})">
+            <button class="btn-answer" id="submitBtn" onclick="MathAlarm.submitAnswer({{ alarm.id }})">
+                ✅ 提交答案
+            </button>
+        </div>
+
+        <!-- 回饋訊息 -->
+        <div class="feedback-message" id="feedbackMsg"></div>
+
+        <!-- 計時器 -->
+        <div class="elapsed-time">
+            已經過 <span id="elapsedTime">0</span> 秒
+        </div>
+
+        <!-- 貪睡按鈕 -->
+        <div class="snooze-section">
+            <button class="btn-snooze" onclick="MathAlarm.snoozeAlarm({{ alarm.id }})">
+                😴 貪睡 5 分鐘
+            </button>
+            <p class="snooze-warning">⚠️ 貪睡將加重下次的計算懲罰</p>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // 鎖定頁面初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            MathAlarm.initLockScreen();
+        });
+    </script>
+</body>
+</html>
