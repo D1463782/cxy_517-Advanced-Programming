@@ -118,6 +118,29 @@
         </div>
     </div>
 
+    <!-- 早安語錄彈窗 (F-06 Success Quote Modal) -->
+    <div class="modal-overlay" id="quoteModal">
+        <div class="modal-content glass-card quote-modal-content">
+            <div class="quote-header">
+                <span class="quote-sun">☀️</span>
+                <h2>挑戰成功！早安！</h2>
+            </div>
+            <div class="quote-body">
+                <div class="quote-box">
+                    <span class="quote-mark">“</span>
+                    <p id="quoteText" class="quote-text">早起是一件痛苦但值得堅持的事，今天又是充滿希望的一天！</p>
+                    <span class="quote-mark text-right">”</span>
+                </div>
+                <p class="quote-sub">養成良好的早起習慣，今天也要加油哦！</p>
+            </div>
+            <div class="quote-footer">
+                <button id="quoteCloseBtn" class="btn-submit quote-btn" onclick="window.location.href='/'">
+                    ✨ 開始新的一天！
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script>
         // 鎖定頁面初始化

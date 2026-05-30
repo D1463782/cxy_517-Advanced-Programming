@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime, timedelta
 from app.models.alarm import get_db_connection
 
 class History:
@@ -64,7 +65,9 @@ class History:
             'avg_time_taken': 0,
             'total_wrong_attempts': 0,
             'difficulty_distribution': {'easy': 0, 'medium': 0, 'hard': 0},
-            'recent_trend': []
+            'recent_trend': [],
+            'current_streak': 0,
+            'longest_streak': 0
         }
         try:
             # 1. 總數與加總
@@ -96,9 +99,76 @@ class History:
             # 翻轉陣列使其符合時間遞增
             stats['recent_trend'] = [dict(r) for r in reversed(trend_rows)]
 
+            # 融入連續早起天數
+            streak_data = History.get_streak_stats()
+            stats['current_streak'] = streak_data['current_streak']
+            stats['longest_streak'] = streak_data['longest_streak']
+
             return stats
         except sqlite3.Error as e:
             print(f"Database error in History.get_stats: {e}")
             return stats
+        finally:
+            conn.close()
+
+    @staticmethod
+    def get_streak_stats():
+        """動態計算連續早起天數 (Streak) 與歷史最長連續天數。"""
+        conn = get_db_connection()
+        try:
+            # 取得所有解鎖日期，去重並依時間降序排列
+            rows = conn.execute(
+                "SELECT DISTINCT date(unlock_time) as unlock_date FROM history ORDER BY unlock_date DESC"
+            ).fetchall()
+            
+            dates = []
+            for row in rows:
+                if row['unlock_date']:
+                    try:
+                        d = datetime.strptime(row['unlock_date'], '%Y-%m-%d').date()
+                        dates.append(d)
+                    except ValueError:
+                        pass
+            
+            if not dates:
+                return {'current_streak': 0, 'longest_streak': 0}
+            
+            today = datetime.now().date()
+            yesterday = today - timedelta(days=1)
+            
+            # 計算 current_streak (連續早起天數)
+            current_streak = 0
+            if dates[0] == today or dates[0] == yesterday:
+                current_streak = 1
+                expected_date = dates[0] - timedelta(days=1)
+                for d in dates[1:]:
+                    if d == expected_date:
+                        current_streak += 1
+                        expected_date -= timedelta(days=1)
+                    elif d > expected_date:
+                        continue
+                    else:
+                        break
+            
+            # 計算 longest_streak (最長連續早起天數)
+            longest_streak = 0
+            if len(dates) > 0:
+                temp_streak = 1
+                longest_streak = 1
+                for i in range(1, len(dates)):
+                    if (dates[i-1] - dates[i]).days == 1:
+                        temp_streak += 1
+                    elif (dates[i-1] - dates[i]).days > 1:
+                        longest_streak = max(longest_streak, temp_streak)
+                        temp_streak = 1
+                longest_streak = max(longest_streak, temp_streak)
+            
+            return {
+                'current_streak': current_streak,
+                'longest_streak': longest_streak
+            }
+        except sqlite3.Error as e:
+            print(f"Database error in History.get_streak_stats: {e}")
+            return {'current_streak': 0, 'longest_streak': 0}
         finally:
             conn.close()

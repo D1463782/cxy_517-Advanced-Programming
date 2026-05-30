@@ -180,6 +180,28 @@ const MathAlarm = {
   openModal: function() {
     const modal = document.getElementById('alarmModal');
     if (modal) {
+      // 重設標題與 action
+      const title = modal.querySelector('.modal-header h2');
+      if (title) title.innerText = "⏰ 新增鬧鐘";
+      const form = modal.querySelector('.alarm-form');
+      if (form) form.action = "/alarms/new";
+      
+      // 重設預設值
+      const presetSelect = document.getElementById('alarmPreset');
+      if (presetSelect) presetSelect.value = "custom";
+      const noteInput = document.getElementById('alarmNote');
+      if (noteInput) noteInput.value = "";
+      const taskCountInput = document.getElementById('alarmTaskCount');
+      if (taskCountInput) taskCountInput.value = "1";
+      
+      const weekdays = document.querySelectorAll('.weekday-chip input');
+      weekdays.forEach(w => w.checked = false);
+      
+      const diffInputs = document.querySelectorAll('.difficulty-selector input');
+      diffInputs.forEach(i => {
+        if (i.value === 'easy') i.checked = true;
+      });
+
       modal.classList.add('open');
       // 自動設定預設時間為當前時間的下一分鐘
       const now = new Date();
@@ -194,6 +216,50 @@ const MathAlarm = {
   closeModal: function() {
     const modal = document.getElementById('alarmModal');
     if (modal) modal.classList.remove('open');
+  },
+
+  // 開啟編輯 Modal
+  openEditModal: function(alarm) {
+    const modal = document.getElementById('alarmModal');
+    if (!modal) return;
+    
+    // 變更標題與表單 action
+    const title = modal.querySelector('.modal-header h2');
+    if (title) title.innerText = "⏰ 編輯鬧鐘";
+    const form = modal.querySelector('.alarm-form');
+    if (form) form.action = `/alarms/${alarm.id}/edit`;
+    
+    // 設定預設情境下拉選單為「自訂模式」
+    const presetSelect = document.getElementById('alarmPreset');
+    if (presetSelect) presetSelect.value = "custom";
+    
+    // 填入時間
+    const timeInput = document.getElementById('alarmTime');
+    if (timeInput) timeInput.value = alarm.time;
+    
+    // 填入備註
+    const noteInput = document.getElementById('alarmNote');
+    if (noteInput) noteInput.value = alarm.note || "";
+    
+    // 填入答對題數
+    const taskCountInput = document.getElementById('alarmTaskCount');
+    if (taskCountInput) taskCountInput.value = alarm.task_count;
+    
+    // 填入重複日
+    const weekdays = document.querySelectorAll('.weekday-chip input');
+    const repeatDaysList = alarm.repeat_days ? alarm.repeat_days.split(',') : [];
+    weekdays.forEach(w => {
+      w.checked = repeatDaysList.includes(w.value);
+    });
+    
+    // 填入難度
+    const diffInputs = document.querySelectorAll('.difficulty-selector input');
+    diffInputs.forEach(i => {
+      i.checked = (i.value === alarm.difficulty);
+    });
+    
+    // 開啟 Modal
+    modal.classList.add('open');
   },
 
   // 調整答對題數限制
@@ -451,22 +517,50 @@ const MathAlarm = {
     });
   },
 
-  // 解鎖成功後續處理
-  handleUnlockSuccess: function() {
+  // 解鎖成功後續處理 (帶早安語錄與連續早起天數展示)
+  handleUnlockSuccess: function(streak) {
     this.stopAlarm();
     this.playSuccessSound();
     clearInterval(this.elapsedTimer);
     window.onbeforeunload = null; // 解除警告
 
-    const feedback = document.getElementById('feedbackMsg');
-    if (feedback) {
-      feedback.className = "feedback-message success";
-      feedback.innerText = "🎉 挑戰成功！大腦已開機！3 秒後回首頁。";
+    // 隨機早安語錄清單 (F-06)
+    const quotes = [
+      "早安！大腦已經完全甦醒，今天也要朝著夢想前進！🚀",
+      "今天的你，比昨天的你更早起了一點點，這就是進步！💪",
+      "起床吧！今天的太陽很溫暖，而你的期末專題也一定會順利通過！🎓",
+      "聽說早起的人會有好運，但如果不起來，好運就只能在夢裡見了 😴",
+      "大腦已開機，邏輯已上線。今天又是充滿代碼與活力的一天！💻",
+      "成功就是每天早上起床，決定今天要做一個比昨天更好的人 ✨",
+      "早起的人有蟲吃，晚起的人就只能被鬧鐘轟炸了 🐛",
+      "大腦清醒度 100%，恭喜你成功戰勝睡魔！出發征服今天吧！🏆"
+    ];
+    const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+    
+    // 更新語錄與連續天數
+    const quoteText = document.getElementById('quoteText');
+    if (quoteText) quoteText.innerText = randomQuote;
+    
+    const quoteSub = document.querySelector('.quote-sub');
+    if (quoteSub && streak !== undefined) {
+      quoteSub.innerHTML = `🔥 您已連續早起 <strong>${streak}</strong> 天！養成良好的早起習慣，今天也要加油哦！`;
     }
 
-    setTimeout(() => {
-      window.location.href = "/";
-    }, 3000);
+    // 顯示早安語錄 modal
+    const quoteModal = document.getElementById('quoteModal');
+    if (quoteModal) {
+      quoteModal.classList.add('open');
+    } else {
+      // 回退機制 (如果 modal 不存在)
+      const feedback = document.getElementById('feedbackMsg');
+      if (feedback) {
+        feedback.className = "feedback-message success";
+        feedback.innerText = `🎉 挑戰成功！連續早起 ${streak || 0} 天！3 秒後回首頁。`;
+      }
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 3000);
+    }
   },
 
   // ─── F-07 快速反應點擊 Canvas 遊戲實作 ───
@@ -635,7 +729,7 @@ const MathAlarm = {
         if (data.success) {
           document.getElementById('gameContainer').style.display = 'none';
           document.getElementById('feedbackMsg').style.display = 'block';
-          this.handleUnlockSuccess();
+          this.handleUnlockSuccess(data.streak);
         }
       })
       .catch(err => {
@@ -705,7 +799,7 @@ const MathAlarm = {
           // 罰寫解鎖成功
           document.getElementById('sosContainer').style.display = 'none';
           document.getElementById('feedbackMsg').style.display = 'block';
-          this.handleUnlockSuccess();
+          this.handleUnlockSuccess(data.streak);
         } else {
           this.playSuccessSound(); // 正確提醒
           document.getElementById('sosHitsText').innerText = `${data.written_count} / 10`;

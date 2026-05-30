@@ -54,6 +54,31 @@ def delete_alarm(alarm_id):
     return redirect(url_for('main.index'))
 
 
+@alarm_bp.route('/alarms/<int:alarm_id>/edit', methods=['POST'])
+def edit(alarm_id):
+    """編輯鬧鐘控制器：接收表單資料，更新 SQLite 中鬧鐘資料後重導向回首頁。"""
+    time_val = request.form.get('time', '').strip()
+    if not time_val:
+        flash('錯誤：請選擇有效時間！', 'error')
+        return redirect(url_for('main.index'))
+
+    # 重重複星期
+    repeat_days_list = request.form.getlist('repeat_days')
+    repeat_days = ','.join(repeat_days_list) if repeat_days_list else None
+
+    difficulty = request.form.get('difficulty', 'easy')
+    task_count = int(request.form.get('task_count', 1))
+    note = request.form.get('note', '').strip() or None
+
+    try:
+        Alarm.update(alarm_id, time_val, repeat_days, difficulty, task_count, note)
+        flash('鬧鐘修改成功！', 'success')
+    except Exception as e:
+        flash(f'修改失敗：{e}', 'error')
+
+    return redirect(url_for('main.index'))
+
+
 # ═══════════════════════════════════════════════
 # 鬧鐘輪詢與警報鎖定路由
 # ═══════════════════════════════════════════════
@@ -240,10 +265,14 @@ def verify_game(alarm_id):
     if not alarm['repeat_days']:
         Alarm.toggle_status(alarm_id)
 
+    # 取得當前連續早起天數以進行展示
+    streak_stats = History.get_streak_stats()
+    current_streak = streak_stats['current_streak']
+
     # 清除 Session 響鈴狀態
     _clear_ringing_session()
 
-    return jsonify({'success': True, 'finished': True})
+    return jsonify({'success': True, 'finished': True, 'streak': current_streak})
 
 
 @alarm_bp.route('/alarms/active/<int:alarm_id>/sos', methods=['GET'])
@@ -307,8 +336,12 @@ def verify_sos(alarm_id):
         if not alarm['repeat_days']:
             Alarm.toggle_status(alarm_id)
 
+        # 取得當前連續早起天數以進行展示
+        streak_stats = History.get_streak_stats()
+        current_streak = streak_stats['current_streak']
+
         _clear_ringing_session()
-        return jsonify({'success': True, 'finished': True})
+        return jsonify({'success': True, 'finished': True, 'streak': current_streak})
 
     return jsonify({'success': True, 'finished': False, 'written_count': written_count})
 

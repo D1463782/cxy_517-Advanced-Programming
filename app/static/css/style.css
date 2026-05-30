@@ -1525,3 +1525,251 @@ body {
     margin-left: auto;
   }
 }
+
+/* ─── Streak Card (自律早起成就) ─── */
+.streak-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 20px 0;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(255, 107, 107, 0.15) 0%, rgba(255, 143, 64, 0.1) 100%);
+  border: 1px solid rgba(255, 143, 64, 0.25);
+  box-shadow: 0 8px 32px 0 rgba(255, 107, 107, 0.08);
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+}
+
+.streak-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.streak-fire {
+  font-size: 2.2rem;
+  animation: fire-pulsate 1.5s infinite alternate ease-in-out;
+  display: inline-block;
+  filter: drop-shadow(0 0 8px rgba(255, 143, 64, 0.6));
+}
+
+.streak-title-group h3 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+.streak-title-group p {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.65);
+  margin: 4px 0 0 0;
+}
+
+.streak-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.streak-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  justify-content: center;
+}
+
+.streak-stat-item .stat-value {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #ff9f43;
+  line-height: 1.2;
+}
+
+.streak-stat-item .stat-value.badge-title {
+  font-size: 1.05rem;
+  color: #ff6b6b;
+  font-weight: 700;
+  background: rgba(255, 107, 107, 0.15);
+  padding: 4px 10px;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 107, 107, 0.2);
+}
+
+.streak-stat-item .stat-label {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+@keyframes fire-pulsate {
+  0% {
+    transform: scale(1) rotate(-3deg);
+  }
+  100% {
+    transform: scale(1.15) rotate(3deg);
+  }
+}
+
+/* ─── Edit Alarm Button ─── */
+.btn-edit {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-edit:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #60a5fa;
+  transform: translateY(-1px);
+}
+
+/* ─── Success Morning Quotes Modal ─── */
+.quote-modal-content {
+  max-width: 480px;
+  padding: 30px;
+  text-align: center;
+  border: 1px solid rgba(255, 223, 128, 0.25);
+  box-shadow: 0 16px 48px 0 rgba(255, 223, 128, 0.15);
+  background: linear-gradient(135deg, rgba(16, 22, 42, 0.95) 0%, rgba(30, 30, 60, 0.9) 100%) !important;
+  animation: modal-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.quote-header {
+  margin-bottom: 20px;
+}
+
+.quote-sun {
+  font-size: 3.2rem;
+  display: inline-block;
+  animation: sun-spin 6s linear infinite;
+  filter: drop-shadow(0 0 12px rgba(255, 223, 128, 0.6));
+}
+
+.quote-header h2 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 800;
+  margin: 10px 0 0 0;
+  color: #fff;
+  background: linear-gradient(to right, #ffe69c, #ffbd59);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.quote-body {
+  margin-bottom: 25px;
+}
+
+.quote-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 20px;
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.quote-text {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #f1f5f9;
+  font-weight: 500;
+  margin: 0;
+  font-style: italic;
+}
+
+.quote-mark {
+  font-family: 'Outfit', sans-serif;
+  font-size: 3rem;
+  line-height: 0.1;
+  color: rgba(255, 223, 128, 0.15);
+  position: absolute;
+}
+
+.quote-mark:not(.text-right) {
+  top: 15px;
+  left: 12px;
+}
+
+.quote-mark.text-right {
+  bottom: -15px;
+  right: 12px;
+}
+
+.quote-sub {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.quote-sub strong {
+  color: #ff9f43;
+  font-weight: 700;
+}
+
+.quote-btn {
+  background: linear-gradient(135deg, #ffbd59 0%, #ff9f43 100%) !important;
+  color: #0b0e1a !important;
+  font-weight: 700 !important;
+  padding: 12px 24px !important;
+  font-size: 1rem !important;
+  box-shadow: 0 4px 16px rgba(255, 159, 67, 0.3) !important;
+  margin-top: 15px;
+}
+
+.quote-btn:hover {
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow: 0 6px 20px rgba(255, 159, 67, 0.5) !important;
+}
+
+@keyframes sun-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes modal-enter {
+  0% {
+    transform: scale(0.9) translateY(20px);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* RWD 響應式優化 */
+@media (max-width: 576px) {
+  .streak-stats-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .streak-header {
+    flex-direction: column;
+    text-align: center;
+  }
+}
