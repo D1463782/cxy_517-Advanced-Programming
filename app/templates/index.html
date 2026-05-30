@@ -110,6 +110,17 @@
             <button class="modal-close" onclick="MathAlarm.closeModal()">&times;</button>
         </div>
         <form action="{{ url_for('alarm.create') }}" method="POST" class="alarm-form">
+            <!-- 預設情境 (F-09) -->
+            <div class="form-group">
+                <label for="alarmPreset">套用預設情境</label>
+                <select id="alarmPreset" name="preset" class="form-input" onchange="MathAlarm.applyPreset(this.value)">
+                    <option value="custom" selected>✏️ 自訂模式</option>
+                    <option value="exam">🔥 考試地獄 (困難/5題/無貪睡)</option>
+                    <option value="weekday">🏫 平日上課 (中等/2題/可貪睡)</option>
+                    <option value="weekend">😊 週末溫和 (簡單/1題/可貪睡)</option>
+                </select>
+            </div>
+
             <!-- 時間 -->
             <div class="form-group">
                 <label for="alarmTime">響鈴時間</label>
@@ -183,4 +194,12 @@
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        MathAlarm.startBackgroundCheck();
+    });
+</script>
 {% endblock %}

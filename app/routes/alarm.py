@@ -172,35 +172,9 @@ def verify_answer(alarm_id):
         correct_count = session['correct_count']
 
         if correct_count >= actual_task_count:
-            # 達標：寫入歷史、解鎖鬧鐘
-            ring_start = session.get('ring_start_time', datetime.now().isoformat())
-            unlock_time = datetime.now().isoformat()
-            try:
-                time_taken = int((datetime.now() - datetime.fromisoformat(ring_start)).total_seconds())
-            except Exception:
-                time_taken = 0
-            wrong_count = session.get('wrong_count', 0)
-
-            History.create(
-                alarm_id=alarm_id,
-                ring_time=ring_start,
-                unlock_time=unlock_time,
-                time_taken=time_taken,
-                wrong_attempts=wrong_count,
-                difficulty_faced=actual_difficulty
-            )
-
-            # 重設貪睡狀態
-            Alarm.reset_snooze(alarm_id)
-
-            # 單次鬧鐘自動關閉
-            if not alarm['repeat_days']:
-                Alarm.toggle_status(alarm_id)
-
-            # 清除 Session 響鈴狀態
-            _clear_ringing_session()
-
-            return jsonify({'success': True, 'finished': True})
+            # 數學挑戰達標，標記為 math_finished 供後續驗證，但不直接解鎖
+            session['math_finished'] = True
+            return jsonify({'success': True, 'finished': False, 'show_game': True})
         else:
             # 未達標：產生下一題
             question, answer = _generate_math_question(actual_difficulty)
@@ -228,6 +202,115 @@ def verify_answer(alarm_id):
             'correct_count': session.get('correct_count', 0),
             'task_count': actual_task_count
         })
+
+
+@alarm_bp.route('/alarms/active/<int:alarm_id>/verify-game', methods=['POST'])
+def verify_game(alarm_id):
+    """反應力測試驗證：當前端完成 Canvas 紅點點擊時發送請求以完成解鎖鬧鐘。"""
+    alarm = Alarm.get_by_id(alarm_id)
+    if not alarm:
+        return jsonify({'success': False, 'message': '找不到該鬧鐘'}), 404
+
+    if not session.get('math_finished'):
+        return jsonify({'success': False, 'message': '您尚未通過數學挑戰！'}), 403
+
+    # 順利完成：寫入歷史數據並重設狀態
+    ring_start = session.get('ring_start_time', datetime.now().isoformat())
+    unlock_time = datetime.now().isoformat()
+    try:
+        time_taken = int((datetime.now() - datetime.fromisoformat(ring_start)).total_seconds())
+    except Exception:
+        time_taken = 0
+    wrong_count = session.get('wrong_count', 0)
+    actual_difficulty = _get_punished_difficulty(alarm['difficulty'], alarm['snooze_count'])
+
+    History.create(
+        alarm_id=alarm_id,
+        ring_time=ring_start,
+        unlock_time=unlock_time,
+        time_taken=time_taken,
+        wrong_attempts=wrong_count,
+        difficulty_faced=actual_difficulty
+    )
+
+    # 重設貪睡狀態
+    Alarm.reset_snooze(alarm_id)
+
+    # 單次鬧鐘自動關閉
+    if not alarm['repeat_days']:
+        Alarm.toggle_status(alarm_id)
+
+    # 清除 Session 響鈴狀態
+    _clear_ringing_session()
+
+    return jsonify({'success': True, 'finished': True})
+
+
+@alarm_bp.route('/alarms/active/<int:alarm_id>/sos', methods=['GET'])
+def get_sos_sentence(alarm_id):
+    """求救罰寫路由：隨機返回一個罰寫句子，並初始化進度到 Session。"""
+    sentences = [
+        "我保證今晚一定在 11 點前睡覺，絕對不准賴床，明天要精神飽滿！",
+        "我承認我今天早上解不出數學題，但我會努力起來，維持良好作息！",
+        "早起是一件痛苦但值得堅持的事，我不會再被睡魔打敗，出發吧！",
+        "期末專題一定要順利通過，我不賴床、不遲到，一定會準時交卷！",
+        "大腦目前運轉有點緩慢，我正在打字罰寫，讓手指跟思緒完全清醒！"
+    ]
+    sentence = random.choice(sentences)
+    session['sos_sentence'] = sentence
+    session['sos_written_count'] = 0
+    return jsonify({'success': True, 'sentence': sentence})
+
+
+@alarm_bp.route('/alarms/active/<int:alarm_id>/verify-sos', methods=['POST'])
+def verify_sos(alarm_id):
+    """罰寫單次提交驗證：核對輸入內容，累計 10 次成功後解鎖。"""
+    alarm = Alarm.get_by_id(alarm_id)
+    if not alarm:
+        return jsonify({'success': False, 'message': '找不到該鬧鐘'}), 404
+
+    data = request.get_json(silent=True) or {}
+    user_text = str(data.get('input_text', '')).strip()
+
+    target_sentence = session.get('sos_sentence')
+    if not target_sentence:
+        return jsonify({'success': False, 'message': '求救流程未正常啟動！'}), 400
+
+    if user_text != target_sentence:
+        return jsonify({'success': False, 'message': '罰寫內容不符，請仔細檢查標點與字元！'})
+
+    # 答對一次，累加進度
+    session['sos_written_count'] = session.get('sos_written_count', 0) + 1
+    written_count = session['sos_written_count']
+
+    if written_count >= 10:
+        # 達標 10 次：寫入歷史記錄，難度註記為 'SOS'
+        ring_start = session.get('ring_start_time', datetime.now().isoformat())
+        unlock_time = datetime.now().isoformat()
+        try:
+            time_taken = int((datetime.now() - datetime.fromisoformat(ring_start)).total_seconds())
+        except Exception:
+            time_taken = 0
+        wrong_count = session.get('wrong_count', 0)
+
+        History.create(
+            alarm_id=alarm_id,
+            ring_time=ring_start,
+            unlock_time=unlock_time,
+            time_taken=time_taken,
+            wrong_attempts=wrong_count,
+            difficulty_faced='SOS'
+        )
+
+        # 重設貪睡與單次狀態
+        Alarm.reset_snooze(alarm_id)
+        if not alarm['repeat_days']:
+            Alarm.toggle_status(alarm_id)
+
+        _clear_ringing_session()
+        return jsonify({'success': True, 'finished': True})
+
+    return jsonify({'success': True, 'finished': False, 'written_count': written_count})
 
 
 @alarm_bp.route('/alarms/active/<int:alarm_id>/snooze', methods=['POST'])
@@ -258,7 +341,8 @@ def snooze_alarm(alarm_id):
 def _clear_ringing_session():
     """清除 Session 中所有與當前響鈴相關的資料。"""
     keys_to_remove = ['ringing_alarm_id', 'ring_start_time', 'math_question',
-                      'math_answer', 'correct_count', 'wrong_count']
+                      'math_answer', 'correct_count', 'wrong_count', 'math_finished',
+                      'sos_sentence', 'sos_written_count']
     for key in keys_to_remove:
         session.pop(key, None)
 

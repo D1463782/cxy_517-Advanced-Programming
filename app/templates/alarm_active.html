@@ -71,6 +71,33 @@
             </button>
         </div>
 
+        <!-- F-07 快速反應點擊遊戲區 -->
+        <div id="gameContainer" class="game-container" style="display: none;">
+            <h2 class="game-title">🎯 雙重清醒驗證</h2>
+            <p class="game-desc">點擊快速移動的紅色小球以證明你已完全清醒！</p>
+            <div class="game-canvas-wrapper">
+                <canvas id="gameCanvas" width="320" height="240"></canvas>
+                <div class="game-hits" id="gameHitsText">0 / 5</div>
+                <div class="game-countdown" id="gameTimeText">5.0s</div>
+            </div>
+        </div>
+
+        <!-- F-08 緊急求救罰寫解鎖區 -->
+        <div id="sosContainer" class="sos-container" style="display: none;">
+            <h2 class="sos-title">🚨 緊急求救罰寫</h2>
+            <div class="sos-card glass-card">
+                <label>請複製罰寫以下內容（必須完全相同）：</label>
+                <div class="sos-sentence" id="sosSentence"></div>
+            </div>
+            <div class="sos-input-group">
+                <input type="text" id="sosInput" class="sos-input" placeholder="在此輸入上方句子..."
+                       onkeydown="if(event.key==='Enter') MathAlarm.submitSOS({{ alarm.id }})">
+                <button class="btn-answer sos-btn" onclick="MathAlarm.submitSOS({{ alarm.id }})">
+                    📝 提交罰寫 (<span id="sosHitsText">0 / 10</span>)
+                </button>
+            </div>
+        </div>
+
         <!-- 回饋訊息 -->
         <div class="feedback-message" id="feedbackMsg"></div>
 
@@ -85,6 +112,9 @@
                 😴 貪睡 5 分鐘
             </button>
             <p class="snooze-warning">⚠️ 貪睡將加重下次的計算懲罰</p>
+            <button class="btn-trigger-sos" onclick="MathAlarm.triggerSOSMode({{ alarm.id }})">
+                🚨 卡關求救？緊急罰寫解鎖
+            </button>
         </div>
     </div>
 
