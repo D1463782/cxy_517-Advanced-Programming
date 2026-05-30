@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MathAlarm — 鬧鐘列表</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-primary: #0a0e1a;
+      --bg-card: rgba(255,255,255,0.04);
+      --bg-card-hover: rgba(255,255,255,0.08);
+      --border-glass: rgba(255,255,255,0.08);
+      --text-primary: #f0f2f8;
+      --text-secondary: rgba(255,255,255,0.5);
+      --accent-blue: #4e8cff;
+      --accent-purple: #a855f7;
+      --accent-green: #34d399;
+      --accent-orange: #fb923c;
+      --accent-red: #f43f5e;
+      --glow-blue: rgba(78,140,255,0.3);
+      --glow-purple: rgba(168,85,247,0.3);
+    }
+
+    body {
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated Background */
+    .bg-gradient {
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 600px 400px at 20% 20%, rgba(78,140,255,0.12), transparent),
+        radial-gradient(ellipse 500px 500px at 80% 70%, rgba(168,85,247,0.10), transparent),
+        radial-gradient(ellipse 400px 300px at 50% 50%, rgba(52,211,153,0.05), transparent);
+      animation: bgShift 15s ease-in-out infinite alternate;
+    }
+    @keyframes bgShift {
+      0% { opacity: 1; }
+      50% { opacity: 0.7; }
+      100% { opacity: 1; }
+    }
+
+    .container {
+      position: relative; z-index: 1;
+      max-width: 480px; margin: 0 auto;
+      padding: 24px 20px 100px;
+    }
+
+    /* Header */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 32px; padding-top: 12px;
+    }
+    .header h1 {
+      font-size: 28px; font-weight: 800;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+    .header-subtitle {
+      font-size: 13px; color: var(--text-secondary); margin-top: 2px;
+    }
+    .btn-add {
+      width: 48px; height: 48px; border-radius: 16px; border: none;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      color: #fff; font-size: 28px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 20px var(--glow-blue);
+      transition: all 0.3s ease;
+    }
+    .btn-add:hover { transform: scale(1.1); box-shadow: 0 6px 30px var(--glow-purple); }
+
+    /* Stats Bar */
+    .stats-bar {
+      display: flex; gap: 12px; margin-bottom: 28px;
+    }
+    .stat-chip {
+      flex: 1; padding: 14px 16px; border-radius: 16px;
+      background: var(--bg-card); border: 1px solid var(--border-glass);
+      backdrop-filter: blur(20px); text-align: center;
+    }
+    .stat-chip .stat-value {
+      font-size: 24px; font-weight: 800;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-green));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .stat-chip .stat-label {
+      font-size: 11px; color: var(--text-secondary); margin-top: 4px;
+      text-transform: uppercase; letter-spacing: 1px;
+    }
+
+    /* Section Label */
+    .section-label {
+      font-size: 12px; font-weight: 600; color: var(--text-secondary);
+      text-transform: uppercase; letter-spacing: 1.5px;
+      margin-bottom: 16px; padding-left: 4px;
+    }
+
+    /* Alarm Card */
+    .alarm-card {
+      background: var(--bg-card); border: 1px solid var(--border-glass);
+      backdrop-filter: blur(24px); border-radius: 20px;
+      padding: 20px 22px; margin-bottom: 14px;
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer; position: relative; overflow: hidden;
+    }
+    .alarm-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    }
+    .alarm-card:hover {
+      background: var(--bg-card-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+    .alarm-card.disabled { opacity: 0.4; }
+
+    .alarm-top {
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .alarm-time {
+      font-size: 48px; font-weight: 300; letter-spacing: -2px;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .alarm-period {
+      font-size: 16px; font-weight: 600; color: var(--text-secondary);
+      margin-left: 6px; vertical-align: super;
+    }
+
+    /* Toggle Switch */
+    .toggle {
+      width: 52px; height: 30px; border-radius: 15px;
+      background: rgba(255,255,255,0.1); border: none;
+      cursor: pointer; position: relative;
+      transition: background 0.3s ease;
+    }
+    .toggle.active {
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      box-shadow: 0 2px 12px var(--glow-blue);
+    }
+    .toggle::after {
+      content: ''; position: absolute;
+      width: 24px; height: 24px; border-radius: 12px;
+      background: #fff; top: 3px; left: 3px;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .toggle.active::after { transform: translateX(22px); }
+
+    .alarm-meta {
+      display: flex; align-items: center; gap: 10px;
+      margin-top: 14px; flex-wrap: wrap;
+    }
+
+    /* Difficulty Badge */
+    .badge {
+      padding: 4px 10px; border-radius: 8px;
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .badge-easy { background: rgba(52,211,153,0.15); color: var(--accent-green); }
+    .badge-medium { background: rgba(78,140,255,0.15); color: var(--accent-blue); }
+    .badge-hard { background: rgba(251,146,60,0.15); color: var(--accent-orange); }
+    .badge-expert { background: rgba(244,63,94,0.15); color: var(--accent-red); }
+
+    /* Week Days */
+    .week-days {
+      display: flex; gap: 4px;
+    }
+    .week-day {
+      width: 26px; height: 26px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700;
+      background: rgba(255,255,255,0.04); color: var(--text-secondary);
+    }
+    .week-day.active {
+      background: rgba(78,140,255,0.2); color: var(--accent-blue);
+    }
+
+    .alarm-label {
+      font-size: 13px; color: var(--text-secondary);
+      margin-top: 10px; display: flex; align-items: center; gap: 6px;
+    }
+    .alarm-label::before {
+      content: '📝'; font-size: 12px;
+    }
+
+    /* Bottom Nav */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: rgba(10,14,26,0.85);
+      backdrop-filter: blur(20px); border-top: 1px solid var(--border-glass);
+      display: flex; justify-content: space-around;
+      padding: 12px 0 20px; z-index: 100;
+    }
+    .nav-item {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      font-size: 10px; color: var(--text-secondary);
+      text-decoration: none; cursor: pointer;
+      transition: color 0.2s;
+    }
+    .nav-item.active { color: var(--accent-blue); }
+    .nav-item .nav-icon { font-size: 22px; }
+
+    /* Floating Audio Badge */
+    .audio-badge {
+      position: fixed; top: 16px; right: 16px;
+      padding: 8px 14px; border-radius: 12px;
+      background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.2);
+      backdrop-filter: blur(16px);
+      font-size: 12px; font-weight: 600; color: var(--accent-green);
+      display: flex; align-items: center; gap: 6px;
+      z-index: 50; animation: fadeIn 1s ease;
+    }
+    .audio-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent-green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-gradient"></div>
+
+  <div class="audio-badge">
+    <span class="audio-dot"></span>
+    音效已授權
+  </div>
+
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>MathAlarm</h1>
+        <div class="header-subtitle">數學極致醒腦鬧鐘</div>
+      </div>
+      <button class="btn-add" title="新增鬧鐘">+</button>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat-chip">
+        <div class="stat-value">3</div>
+        <div class="stat-label">已啟用</div>
+      </div>
+      <div class="stat-chip">
+        <div class="stat-value">92%</div>
+        <div class="stat-label">本週正確率</div>
+      </div>
+      <div class="stat-chip">
+        <div class="stat-value">1:23</div>
+        <div class="stat-label">平均解題</div>
+      </div>
+    </div>
+
+    <div class="section-label">已設定鬧鐘</div>
+
+    <!-- Alarm 1 -->
+    <div class="alarm-card">
+      <div class="alarm-top">
+        <div>
+          <span class="alarm-time">06:30</span>
+          <span class="alarm-period">AM</span>
+        </div>
+        <button class="toggle active" onclick="this.classList.toggle('active')"></button>
+      </div>
+      <div class="alarm-meta">
+        <span class="badge badge-hard">困難 ×3</span>
+        <div class="week-days">
+          <span class="week-day active">一</span>
+          <span class="week-day active">二</span>
+          <span class="week-day active">三</span>
+          <span class="week-day active">四</span>
+          <span class="week-day active">五</span>
+          <span class="week-day">六</span>
+          <span class="week-day">日</span>
+        </div>
+      </div>
+      <div class="alarm-label">早八必起・微積分課</div>
+    </div>
+
+    <!-- Alarm 2 -->
+    <div class="alarm-card">
+      <div class="alarm-top">
+        <div>
+          <span class="alarm-time">07:00</span>
+          <span class="alarm-period">AM</span>
+        </div>
+        <button class="toggle active" onclick="this.classList.toggle('active')"></button>
+      </div>
+      <div class="alarm-meta">
+        <span class="badge badge-expert">高等 ×2</span>
+        <div class="week-days">
+          <span class="week-day">一</span>
+          <span class="week-day">二</span>
+          <span class="week-day active">三</span>
+          <span class="week-day">四</span>
+          <span class="week-day">五</span>
+          <span class="week-day active">六</span>
+          <span class="week-day">日</span>
+        </div>
+      </div>
+      <div class="alarm-label">統計學模考日</div>
+    </div>
+
+    <!-- Alarm 3 -->
+    <div class="alarm-card">
+      <div class="alarm-top">
+        <div>
+          <span class="alarm-time">08:15</span>
+          <span class="alarm-period">AM</span>
+        </div>
+        <button class="toggle active" onclick="this.classList.toggle('active')"></button>
+      </div>
+      <div class="alarm-meta">
+        <span class="badge badge-easy">簡單 ×2</span>
+        <div class="week-days">
+          <span class="week-day">一</span>
+          <span class="week-day">二</span>
+          <span class="week-day">三</span>
+          <span class="week-day">四</span>
+          <span class="week-day">五</span>
+          <span class="week-day active">六</span>
+          <span class="week-day active">日</span>
+        </div>
+      </div>
+      <div class="alarm-label">週末放鬆起床</div>
+    </div>
+
+    <!-- Alarm 4 (disabled) -->
+    <div class="alarm-card disabled">
+      <div class="alarm-top">
+        <div>
+          <span class="alarm-time">05:45</span>
+          <span class="alarm-period">AM</span>
+        </div>
+        <button class="toggle" onclick="this.classList.toggle('active'); this.closest('.alarm-card').classList.toggle('disabled')"></button>
+      </div>
+      <div class="alarm-meta">
+        <span class="badge badge-medium">中等 ×4</span>
+        <div class="week-days">
+          <span class="week-day active">一</span>
+          <span class="week-day active">二</span>
+          <span class="week-day active">三</span>
+          <span class="week-day active">四</span>
+          <span class="week-day active">五</span>
+          <span class="week-day active">六</span>
+          <span class="week-day active">日</span>
+        </div>
+      </div>
+      <div class="alarm-label">期末考衝刺（已暫停）</div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a class="nav-item active"><span class="nav-icon">⏰</span>鬧鐘</a>
+    <a class="nav-item" href="alarm-ring.html"><span class="nav-icon">🧠</span>解題</a>
+    <a class="nav-item" href="dashboard.html"><span class="nav-icon">📊</span>數據</a>
+    <a class="nav-item"><span class="nav-icon">⚙️</span>設定</a>
+  </nav>
+</body>
+</html>
