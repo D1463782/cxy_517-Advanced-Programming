@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathWake 智力喚醒鬧鐘</title>
+    <!-- 引入 Outfit 與 Plus Jakarta Sans 字型 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: rgba(17, 25, 40, 0.75);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+            --accent-primary: #6366f1; /* Indigo */
+            --accent-secondary: #a855f7; /* Purple */
+            --danger-color: #ef4444;
+            --success-color: #10b981;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 背景流光裝飾 */
+        .ambient-glow {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+            top: 10%;
+            left: 5%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .ambient-glow-2 {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(168, 85, 247, 0.12) 0%, rgba(0, 0, 0, 0) 70%);
+            bottom: 5%;
+            right: 5%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* 鬧鐘啟動時的紅色呼吸背景效果 */
+        .alarm-pulse-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            box-shadow: inset 0 0 100px rgba(239, 68, 68, 0);
+            transition: box-shadow 0.5s ease;
+            z-index: 2;
+            animation: pulse-overlay 3s infinite alternate;
+        }
+
+        @keyframes pulse-overlay {
+            0% {
+                box-shadow: inset 0 0 40px rgba(239, 68, 68, 0.1);
+            }
+            100% {
+                box-shadow: inset 0 0 100px rgba(239, 68, 68, 0.35);
+            }
+        }
+
+        /* 解題主卡片 */
+        .container {
+            width: 100%;
+            max-width: 420px;
+            padding: 24px;
+            z-index: 10;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 28px;
+            padding: 32px 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3),
+                        0 0 0 1px rgba(255, 255, 255, 0.05);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        /* 標題與警示圖示 */
+        .header {
+            margin-bottom: 24px;
+        }
+
+        .bell-icon {
+            font-size: 2.5rem;
+            display: inline-block;
+            animation: ring 0.6s ease-in-out infinite alternate;
+            margin-bottom: 12px;
+            filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.6));
+        }
+
+        @keyframes ring {
+            0% { transform: rotate(-15deg); }
+            100% { transform: rotate(15deg); }
+        }
+
+        .title {
+            font-size: 1.3rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: var(--text-primary);
+            text-transform: uppercase;
+        }
+
+        .subtitle {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* 題目顯示區域 */
+        .formula-section {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 24px 16px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .formula-text {
+            font-size: 3.5rem;
+            font-weight: 800;
+            font-family: 'Outfit', sans-serif;
+            letter-spacing: 2px;
+            color: #ffffff;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+            transition: transform 0.1s ease;
+        }
+
+        /* 左右晃動動畫 (答錯時觸發) */
+        .shake {
+            animation: shake-anim 0.5s ease-in-out;
+        }
+
+        @keyframes shake-anim {
+            0%, 100% { transform: translateX(0); }
+            15%, 45%, 75% { transform: translateX(-18px); }
+            30%, 60%, 90% { transform: translateX(18px); }
+        }
+
+        /* 輸入預覽區域 */
+        .input-display {
+            background: rgba(0, 0, 0, 0.2);
+            border: 2px solid var(--border-color);
+            border-radius: 16px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            font-weight: 700;
+            font-family: 'Outfit', sans-serif;
+            color: var(--accent-secondary);
+            margin-bottom: 24px;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .input-display.active-border {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
+        }
+
+        .input-display:empty::after {
+            content: "輸入解答...";
+            font-size: 1.1rem;
+            color: rgba(255, 255, 255, 0.2);
+            font-weight: 400;
+        }
+
+        /* 光標閃爍效果 */
+        .cursor {
+            width: 3px;
+            height: 30px;
+            background-color: var(--accent-secondary);
+            margin-left: 6px;
+            animation: blink 0.8s infinite;
+            display: inline-block;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        /* 虛擬數字鍵盤 */
+        .keypad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .key {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 18px;
+            height: 60px;
+            font-size: 1.5rem;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .key:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .key:active {
+            background: rgba(255, 255, 255, 0.15);
+            transform: scale(0.95);
+        }
+
+        /* 功能按鈕特殊樣式 */
+        .key.clear {
+            color: var(--danger-color);
+            background: rgba(239, 68, 68, 0.05);
+        }
+        .key.clear:hover {
+            background: rgba(239, 68, 68, 0.15);
+        }
+
+        .key.backspace {
+            color: var(--text-secondary);
+        }
+
+        /* 驗證送出按鈕 (跨欄) */
+        .key.submit {
+            grid-column: span 3;
+            height: 64px;
+            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 1.1rem;
+            border: none;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+            letter-spacing: 2px;
+            margin-top: 6px;
+        }
+
+        .key.submit:hover {
+            box-shadow: 0 6px 24px rgba(99, 102, 241, 0.45);
+            filter: brightness(1.1);
+        }
+
+        .key.submit:active {
+            transform: scale(0.98);
+        }
+
+        /* 訊息提示 */
+        .message-toast {
+            position: fixed;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            padding: 14px 24px;
+            border-radius: 16px;
+            background: rgba(239, 68, 68, 0.9);
+            backdrop-filter: blur(10px);
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 0.95rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            z-index: 100;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .message-toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .message-toast.success {
+            background: rgba(16, 185, 129, 0.9);
+        }
+
+        /* 音訊按鈕提示 (解決瀏覽器音訊限制) */
+        .audio-unlocked-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(11, 15, 25, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            transition: opacity 0.5s ease;
+        }
+
+        .audio-unlocked-modal.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .modal-content {
+            text-align: center;
+            max-width: 320px;
+            padding: 32px 24px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .start-btn {
+            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+            border: none;
+            color: white;
+            padding: 16px 32px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            border-radius: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+        }
+
+        .start-btn:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 鬧鈴啟動紅色光暈遮罩 -->
+    <div class="alarm-pulse-overlay"></div>
+
+    <!-- 背景流光 -->
+    <div class="ambient-glow"></div>
+    <div class="ambient-glow-2"></div>
+
+    <!-- 音訊解鎖提示 (解決 Chrome/Safari 等禁止自動播放音樂的安全政策) -->
+    <div id="audioModal" class="audio-unlocked-modal">
+        <div class="modal-content">
+            <span style="font-size: 3rem; display: block; margin-bottom: 12px;">⏰</span>
+            <h2 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 8px;">MathWake 鬧鐘響起</h2>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5;">大腦強制開機挑戰已準備就緒，請點擊下方按鈕解鎖鬧鈴音效並開始解題！</p>
+            <button class="start-btn" onclick="startAlarmChallenge()">進入解題挑戰</button>
+        </div>
+    </div>
+
+    <!-- 頂端吐司訊息提示 -->
+    <div id="toast" class="message-toast">
+        <span id="toast-icon">⚠️</span>
+        <span id="toast-text">解答錯誤，請重試！</span>
+    </div>
+
+    <!-- 主卡片容器 -->
+    <div class="container">
+        <div class="card" id="solverCard">
+            
+            <!-- 標頭 -->
+            <div class="header">
+                <span class="bell-icon">🔔</span>
+                <h1 class="title">智力喚醒挑戰</h1>
+                <p class="subtitle" id="statusSubtitle">請輸入下方數學公式的正確整數解</p>
+            </div>
+
+            <!-- 數學題目公式區塊 -->
+            <div class="formula-section" id="formulaBox">
+                <div class="formula-text" id="questionText">-- × --</div>
+            </div>
+
+            <!-- 用戶答案預覽區 -->
+            <div class="input-display" id="inputDisplay"></div>
+
+            <!-- 虛擬按鍵面板 -->
+            <div class="keypad">
+                <div class="key" onclick="appendNumber(1)">1</div>
+                <div class="key" onclick="appendNumber(2)">2</div>
+                <div class="key" onclick="appendNumber(3)">3</div>
+                
+                <div class="key" onclick="appendNumber(4)">4</div>
+                <div class="key" onclick="appendNumber(5)">5</div>
+                <div class="key" onclick="appendNumber(6)">6</div>
+                
+                <div class="key" onclick="appendNumber(7)">7</div>
+                <div class="key" onclick="appendNumber(8)">8</div>
+                <div class="key" onclick="appendNumber(9)">9</div>
+                
+                <div class="key clear" onclick="clearInput()">C</div>
+                <div class="key" onclick="appendNumber(0)">0</div>
+                <div class="key backspace" onclick="backspaceInput()">⌫</div>
+                
+                <button class="key submit" onclick="submitAnswer()">驗證並關閉鬧鐘</button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let currentInput = "";
+        let audioCtx = null;
+        let alarmIntervalId = null;
+
+        // 初始化/解鎖音訊並載入題目
+        function startAlarmChallenge() {
+            document.getElementById('audioModal').classList.add('hidden');
+            
+            // 1. 初始化 Web Audio API 生成鬧鈴音效
+            initAlarmSound();
+            
+            // 2. 呼叫後端 API 取得隨機題目
+            loadQuestion();
+        }
+
+        // 利用 Web Audio API 建立純前端電子鬧鈴音效 (無須任何 mp3 檔案)
+        function initAlarmSound() {
+            try {
+                window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+                
+                // 定時產生蜂鳴聲
+                alarmIntervalId = setInterval(() => {
+                    playBeep(880, 0.15); // 產生高頻 A5 聲
+                    setTimeout(() => playBeep(880, 0.15), 200);
+                }, 1000);
+            } catch (e) {
+                console.error("無法初始化 Web Audio API: ", e);
+            }
+        }
+
+        // 產生單次嗶嗶聲
+        function playBeep(frequency, duration) {
+            if (!audioCtx || audioCtx.state === 'suspended') return;
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = "sine"; // 正弦波
+            osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+            
+            gain.gain.setValueAtTime(0.12, audioCtx.currentTime); // 控制適當音量
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        // 停止鬧鈴聲
+        function stopAlarmSound() {
+            if (alarmIntervalId) {
+                clearInterval(alarmIntervalId);
+                alarmIntervalId = null;
+            }
+            if (audioCtx) {
+                audioCtx.close();
+                audioCtx = null;
+            }
+        }
+
+        // 載入題目
+        async function loadQuestion() {
+            try {
+                const response = await fetch('/api/generate_question');
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('questionText').innerText = data.question;
+                    clearInput();
+                } else {
+                    showToast("❌ 無法取得題目，請重試！", false);
+                }
+            } catch (error) {
+                console.error("Error loading question:", error);
+                showToast("❌ 網路連線異常，無法連線後端！", false);
+            }
+        }
+
+        // 鍵盤輸入邏輯
+        function updateDisplay() {
+            const display = document.getElementById('inputDisplay');
+            if (currentInput === "") {
+                display.innerHTML = "";
+                display.classList.remove('active-border');
+            } else {
+                display.innerHTML = currentInput + '<span class="cursor"></span>';
+                display.classList.add('active-border');
+            }
+        }
+
+        function appendNumber(num) {
+            // 限制輸入位數不超過 6 位
+            if (currentInput.length >= 6) return;
+            currentInput += num.toString();
+            updateDisplay();
+            playKeyTapTone(440, 0.05); // 按鍵音
+        }
+
+        function clearInput() {
+            currentInput = "";
+            updateDisplay();
+            playKeyTapTone(330, 0.05);
+        }
+
+        function backspaceInput() {
+            if (currentInput.length > 0) {
+                currentInput = currentInput.slice(0, -1);
+                updateDisplay();
+                playKeyTapTone(350, 0.05);
+            }
+        }
+
+        // 輕微按鍵音效回饋
+        function playKeyTapTone(freq, dur) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + dur);
+        }
+
+        // 送出答案驗證
+        async function submitAnswer() {
+            if (currentInput === "") {
+                showToast("⚠️ 請先輸入答案！", false);
+                return;
+            }
+
+            const solverCard = document.getElementById('solverCard');
+            const formulaBox = document.getElementById('formulaBox');
+
+            try {
+                const response = await fetch('/api/verify_answer', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        answer: parseInt(currentInput, 10)
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // 答對處理
+                    stopAlarmSound();
+                    showToast("🎉 " + data.message, true);
+                    
+                    // 解題成功視覺回饋
+                    document.getElementById('statusSubtitle').innerText = "起床成功！祝您有美好的一天！";
+                    document.getElementById('questionText').style.color = "var(--success-color)";
+                    document.getElementById('inputDisplay').style.borderColor = "var(--success-color)";
+                    document.getElementById('inputDisplay').style.color = "var(--success-color)";
+                    document.querySelector('.bell-icon').style.animation = "none";
+                    document.querySelector('.bell-icon').innerText = "☀️";
+                    document.querySelector('.alarm-pulse-overlay').style.animation = "none";
+                    document.querySelector('.alarm-pulse-overlay').style.boxShadow = "none";
+                    
+                    // 禁用按鍵
+                    const keys = document.querySelectorAll('.key');
+                    keys.forEach(k => k.style.pointerEvents = 'none');
+                } else {
+                    // 答錯處理：左右劇烈搖晃
+                    formulaBox.classList.add('shake');
+                    showToast("❌ " + data.message, false);
+                    
+                    // 答錯音效
+                    playBeep(220, 0.3); // 低音沉悶聲
+                    
+                    // 清空輸入
+                    clearInput();
+                    
+                    // 動畫結束後移除 shake class 以利下次重複觸發
+                    setTimeout(() => {
+                        formulaBox.classList.remove('shake');
+                    }, 500);
+                }
+            } catch (error) {
+                console.error("Error submitting answer:", error);
+                showToast("❌ 驗證失敗，請檢查網路連線", false);
+            }
+        }
+
+        // 提示訊息 (Toast)
+        function showToast(message, isSuccess) {
+            const toast = document.getElementById('toast');
+            const toastText = document.getElementById('toast-text');
+            const toastIcon = document.getElementById('toast-icon');
+
+            toastText.innerText = message;
+            if (isSuccess) {
+                toast.classList.add('success');
+                toastIcon.innerText = "✓";
+            } else {
+                toast.classList.remove('success');
+                toastIcon.innerText = "⚠️";
+            }
+
+            toast.classList.add('show');
+
+            // 3秒後隱藏
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // 支援實體鍵盤輸入
+        document.addEventListener('keydown', (event) => {
+            // 如果已解鎖進入關卡
+            if (document.getElementById('audioModal').classList.contains('hidden')) {
+                if (event.key >= '0' && event.key <= '9') {
+                    appendNumber(parseInt(event.key));
+                } else if (event.key === 'Backspace') {
+                    backspaceInput();
+                } else if (event.key === 'Escape' || event.key === 'c' || event.key === 'C') {
+                    clearInput();
+                } else if (event.key === 'Enter') {
+                    submitAnswer();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

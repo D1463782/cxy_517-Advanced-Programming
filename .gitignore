@@ -1,0 +1,13 @@
+# Python gitignore
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+instance/
+.env
+.flaskenv
+.idea/
+.vscode/
+.DS_Store
