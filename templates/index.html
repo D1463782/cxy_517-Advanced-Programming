@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,8 +8,10 @@
     <!-- 引入 Outfit 與 Plus Jakarta Sans 字型 -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
-    
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap"
+        rel="stylesheet">
+
     <style>
         :root {
             --bg-color: #0b0f19;
@@ -16,8 +19,10 @@
             --border-color: rgba(255, 255, 255, 0.08);
             --text-primary: #ffffff;
             --text-secondary: #94a3b8;
-            --accent-primary: #6366f1; /* Indigo */
-            --accent-secondary: #a855f7; /* Purple */
+            --accent-primary: #6366f1;
+            /* Indigo */
+            --accent-secondary: #a855f7;
+            /* Purple */
             --danger-color: #ef4444;
             --success-color: #10b981;
         }
@@ -84,6 +89,7 @@
             0% {
                 box-shadow: inset 0 0 40px rgba(239, 68, 68, 0.1);
             }
+
             100% {
                 box-shadow: inset 0 0 100px rgba(239, 68, 68, 0.35);
             }
@@ -105,7 +111,7 @@
             border-radius: 28px;
             padding: 32px 24px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3),
-                        0 0 0 1px rgba(255, 255, 255, 0.05);
+                0 0 0 1px rgba(255, 255, 255, 0.05);
             text-align: center;
             transition: all 0.3s ease;
         }
@@ -124,8 +130,13 @@
         }
 
         @keyframes ring {
-            0% { transform: rotate(-15deg); }
-            100% { transform: rotate(15deg); }
+            0% {
+                transform: rotate(-15deg);
+            }
+
+            100% {
+                transform: rotate(15deg);
+            }
         }
 
         .title {
@@ -154,24 +165,29 @@
         }
 
         .formula-text {
-            font-size: 1.8rem; /* 縮小字體以完美呈現 7 數 6 運算子的超長算式 */
+            font-size: 1.8rem;
+            /* 縮小字體以完美呈現 7 數 6 運算子的超長算式 */
             font-weight: 800;
             font-family: 'Outfit', sans-serif;
             letter-spacing: 1px;
             color: #ffffff;
             text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
             transition: transform 0.1s ease;
-            white-space: nowrap; /* 確保算式單行呈現不換行錯位 */
-            overflow-x: auto; /* 超出寬度時提供流暢的水平滾動 */
+            white-space: nowrap;
+            /* 確保算式單行呈現不換行錯位 */
+            overflow-x: auto;
+            /* 超出寬度時提供流暢的水平滾動 */
             padding: 8px 4px;
         }
 
         .formula-text::-webkit-scrollbar {
             height: 4px;
         }
+
         .formula-text::-webkit-scrollbar-track {
             background: rgba(255, 255, 255, 0.01);
         }
+
         .formula-text::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.1);
             border-radius: 2px;
@@ -183,9 +199,23 @@
         }
 
         @keyframes shake-anim {
-            0%, 100% { transform: translateX(0); }
-            15%, 45%, 75% { transform: translateX(-18px); }
-            30%, 60%, 90% { transform: translateX(18px); }
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            15%,
+            45%,
+            75% {
+                transform: translateX(-18px);
+            }
+
+            30%,
+            60%,
+            90% {
+                transform: translateX(18px);
+            }
         }
 
         /* 輸入預覽區域 */
@@ -229,7 +259,9 @@
         }
 
         @keyframes blink {
-            50% { opacity: 0; }
+            50% {
+                opacity: 0;
+            }
         }
 
         /* 虛擬數字鍵盤 */
@@ -271,6 +303,7 @@
             color: var(--danger-color);
             background: rgba(239, 68, 68, 0.05);
         }
+
         .key.clear:hover {
             background: rgba(239, 68, 68, 0.15);
         }
@@ -400,17 +433,20 @@
             justify-content: center;
             padding: 24px;
             overflow: hidden;
-            pointer-events: auto; /* 阻斷所有背景事件 */
+            pointer-events: auto;
+            /* 阻斷所有背景事件 */
         }
+
         .container.locked-mode .card {
             width: 100%;
             max-width: 420px;
             border-color: rgba(99, 102, 241, 0.25);
             box-shadow: 0 0 40px rgba(99, 102, 241, 0.15),
-                        0 20px 40px rgba(0, 0, 0, 0.5);
+                0 20px 40px rgba(0, 0, 0, 0.5);
         }
     </style>
 </head>
+
 <body>
 
     <!-- 鬧鈴啟動紅色光暈遮罩 -->
@@ -425,7 +461,8 @@
         <div class="modal-content">
             <span style="font-size: 3rem; display: block; margin-bottom: 12px;">⏰</span>
             <h2 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 8px;">MathWake 鬧鐘響起</h2>
-            <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5;">大腦強制開機挑戰已準備就緒，請點擊下方按鈕解鎖鬧鈴音效並開始解題！</p>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5;">
+                大腦強制開機挑戰已準備就緒，請點擊下方按鈕解鎖鬧鈴音效並開始解題！</p>
             <button class="start-btn" onclick="startAlarmChallenge()">進入解題挑戰</button>
         </div>
     </div>
@@ -439,7 +476,7 @@
     <!-- 主卡片容器 -->
     <div class="container">
         <div class="card" id="solverCard">
-            
+
             <!-- 標頭 -->
             <div class="header">
                 <span class="bell-icon">🔔</span>
@@ -460,19 +497,19 @@
                 <div class="key" onclick="appendNumber(1)">1</div>
                 <div class="key" onclick="appendNumber(2)">2</div>
                 <div class="key" onclick="appendNumber(3)">3</div>
-                
+
                 <div class="key" onclick="appendNumber(4)">4</div>
                 <div class="key" onclick="appendNumber(5)">5</div>
                 <div class="key" onclick="appendNumber(6)">6</div>
-                
+
                 <div class="key" onclick="appendNumber(7)">7</div>
                 <div class="key" onclick="appendNumber(8)">8</div>
                 <div class="key" onclick="appendNumber(9)">9</div>
-                
+
                 <div class="key clear" onclick="clearInput()">C</div>
                 <div class="key" onclick="appendNumber(0)">0</div>
                 <div class="key backspace" onclick="backspaceInput()">⌫</div>
-                
+
                 <button class="key submit" onclick="submitAnswer()">驗證並關閉鬧鐘</button>
             </div>
 
@@ -490,23 +527,23 @@
         // 初始化/解鎖音訊並載入題目
         async function startAlarmChallenge() {
             document.getElementById('audioModal').classList.add('hidden');
-            
+
             // 1. 呼叫後端 API 初始化計時器
             await startAlarmTimer();
-            
+
             // 2. 初始化 Web Audio API 生成鬧鈴音效 (包含 GainNode)
             initAlarmSound();
-            
+
             // 3. 呼叫後端 API 取得隨機題目
             loadQuestion();
-            
+
             // 4. 啟動音量懲罰輪詢機制
             startPenaltyPolling();
 
             // 5. F-03: 強制進入全螢幕並鎖定遮罩，阻斷背景交互
             enterFullscreen();
             document.querySelector('.container').classList.add('locked-mode');
-            
+
             // 標記挑戰已啟動，開始追蹤焦點
             setTimeout(() => {
                 isChallengeActive = true;
@@ -560,32 +597,32 @@
         // F-03: 觸發作弊懲罰
         async function triggerCheatPenalty() {
             if (!isChallengeActive) return;
-            
+
             // 暫時阻斷重複觸發
             isChallengeActive = false;
-            
+
             try {
-                const response = await fetch('/api/alarms/cheat-penalty', { method: 'POST' });
+                const response = await fetch('https://mathwake-backend.zeabur.app/api/alarms/cheat-penalty', { method: 'POST' });
                 const data = await response.json();
-                
+
                 if (data.success) {
                     // 處以終極處置警告！使用 alert 阻斷使用者操作
                     alert("⚠️ 偵測到切換視窗/逃避作弊！\n\n處以終極懲罰：更換全新超級地獄難度題目，且鬧鈴音量直接拉滿至 100%！");
-                    
+
                     // 重新寫入新生成的超長地獄題目
                     document.getElementById('questionText').innerText = data.question;
-                    
+
                     // 清空原本的輸入欄
                     clearInput();
-                    
+
                     // 後端計時已被回溯 20 秒，前端音量直接拉滿
                     if (gainNode && audioCtx) {
                         gainNode.gain.setValueAtTime(1.0, audioCtx.currentTime);
                     }
-                    
+
                     // 同步最新的 UI (100% 音量，Level 4 紅色極速閃爍)
                     updatePenaltyUI(data.elapsed_seconds, 100, 4);
-                    
+
                     // 確保仍處於全螢幕與鎖定狀態
                     enterFullscreen();
                     document.querySelector('.container').classList.add('locked-mode');
@@ -595,7 +632,7 @@
             } finally {
                 // 延遲重設焦點監聽，防止彈跳視窗引發循環觸發
                 setTimeout(() => {
-                    if (document.getElementById('audioModal').classList.contains('hidden') && 
+                    if (document.getElementById('audioModal').classList.contains('hidden') &&
                         !document.querySelector('.bell-icon').innerText.includes("☀️")) {
                         isChallengeActive = true;
                     }
@@ -606,7 +643,7 @@
         // 呼叫後端 API 啟動計時
         async function startAlarmTimer() {
             try {
-                await fetch('/api/alarms/start', { method: 'POST' });
+                await fetch('https://mathwake-backend.zeabur.app/api/alarms/start', { method: 'POST' });
             } catch (e) {
                 console.error("初始化後端計時器失敗:", e);
             }
@@ -617,13 +654,13 @@
             try {
                 window.AudioContext = window.AudioContext || window.webkitAudioContext;
                 audioCtx = new AudioContext();
-                
+
                 // 建立 GainNode 用於調控音量
                 gainNode = audioCtx.createGain();
                 // 初始音量設定為 20% (與後端初始懲罰對齊)
                 gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
                 gainNode.connect(audioCtx.destination);
-                
+
                 // 定時產生嗶嗶蜂鳴聲
                 alarmIntervalId = setInterval(() => {
                     playBeep(880, 0.15); // 產生高頻 A5 聲
@@ -637,15 +674,15 @@
         // 產生單次嗶嗶聲
         function playBeep(frequency, duration) {
             if (!audioCtx || audioCtx.state === 'suspended' || !gainNode) return;
-            
+
             const osc = audioCtx.createOscillator();
-            
+
             osc.type = "sine"; // 正弦波
             osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
-            
+
             // 連接至 gainNode 控制音量，再由 gainNode 連接 destination
             osc.connect(gainNode);
-            
+
             osc.start();
             osc.stop(audioCtx.currentTime + duration);
         }
@@ -670,7 +707,7 @@
         // 載入題目
         async function loadQuestion() {
             try {
-                const response = await fetch('/api/generate_question');
+                const response = await fetch('https://mathwake-backend.zeabur.app/api/generate_question');
                 const data = await response.json();
                 if (data.success) {
                     document.getElementById('questionText').innerText = data.question;
@@ -688,22 +725,22 @@
         function startPenaltyPolling() {
             // 立即執行一次同步
             syncPenalty();
-            
+
             // 每 2 秒同步一次
             penaltyIntervalId = setInterval(syncPenalty, 2000);
         }
 
         async function syncPenalty() {
             try {
-                const response = await fetch('/api/alarms/check-penalty');
+                const response = await fetch('https://mathwake-backend.zeabur.app/api/alarms/check-penalty');
                 const data = await response.json();
-                
+
                 if (data.success && gainNode && audioCtx) {
                     const volRatio = data.volume_percentage / 100;
-                    
+
                     // 使用 linearRampToValueAtTime 讓音量在 0.8 秒內平滑漸變，與 2 秒輪詢極速響應
                     gainNode.gain.linearRampToValueAtTime(volRatio, audioCtx.currentTime + 0.8);
-                    
+
                     // 動態更新前端 UI
                     updatePenaltyUI(data.elapsed_seconds, data.volume_percentage, data.penalty_level);
                 }
@@ -719,14 +756,14 @@
             if (subtitle) {
                 subtitle.innerHTML = `已響鈴 <span style="color:var(--danger-color); font-weight:800;">${elapsed}</span> 秒 | 當前音量：<span style="color:var(--danger-color); font-weight:800;">${volPercent}%</span>`;
             }
-            
+
             // 2. 隨著音量比例上升，同步加快紅色呼吸燈的閃爍頻率
             const overlay = document.querySelector('.alarm-pulse-overlay');
             if (overlay) {
                 // level 越低閃爍越慢（如 3 秒），level 最高 (4) 時閃爍頻率高達 0.6 秒
                 const speed = Math.max(0.5, 3.0 - level * 0.6);
                 overlay.style.animationDuration = `${speed}s`;
-                
+
                 // 增強紅暈的視覺衝擊
                 if (level > 0) {
                     overlay.style.boxShadow = `inset 0 0 ${40 + level * 20}px rgba(239, 68, 68, ${0.1 + level * 0.08})`;
@@ -796,7 +833,7 @@
             const formulaBox = document.getElementById('formulaBox');
 
             try {
-                const response = await fetch('/api/verify_answer', {
+                const response = await fetch('https://mathwake-backend.zeabur.app/api/verify_answer', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -813,7 +850,7 @@
                     isChallengeActive = false; // F-03: 關閉焦點偵測，避免退出全螢幕觸發作弊
                     stopAlarmSound();
                     showToast("🎉 " + data.message, true);
-                    
+
                     // 解題成功視覺回饋
                     document.getElementById('statusSubtitle').innerText = "起床成功！祝您有美好的一天！";
                     document.getElementById('questionText').style.color = "var(--success-color)";
@@ -821,18 +858,18 @@
                     document.getElementById('inputDisplay').style.color = "var(--success-color)";
                     document.querySelector('.bell-icon').style.animation = "none";
                     document.querySelector('.bell-icon').innerText = "☀️";
-                    
+
                     // F-03: 解除全螢幕並還原遮罩
                     exitFullscreen();
                     document.querySelector('.container').classList.remove('locked-mode');
-                    
+
                     // 移除紅色呼吸燈效果
                     const overlay = document.querySelector('.alarm-pulse-overlay');
                     if (overlay) {
                         overlay.style.animation = "none";
                         overlay.style.boxShadow = "none";
                     }
-                    
+
                     // 禁用按鍵
                     const keys = document.querySelectorAll('.key');
                     keys.forEach(k => k.style.pointerEvents = 'none');
@@ -840,13 +877,13 @@
                     // 答錯處理：左右劇烈搖晃
                     formulaBox.classList.add('shake');
                     showToast("❌ " + data.message, false);
-                    
+
                     // 答錯音效
                     playBeep(220, 0.3); // 低音沉悶聲
-                    
+
                     // 清空輸入
                     clearInput();
-                    
+
                     // 動畫結束後移除 shake class 以利下次重複觸發
                     setTimeout(() => {
                         formulaBox.classList.remove('shake');
@@ -898,4 +935,5 @@
         });
     </script>
 </body>
+
 </html>
