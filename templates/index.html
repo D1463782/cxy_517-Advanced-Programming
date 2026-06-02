@@ -384,6 +384,31 @@
         .start-btn:active {
             transform: scale(0.98);
         }
+
+        /* F-03 防逃避全螢幕遮罩模式 */
+        .container.locked-mode {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            max-width: 100vw;
+            background: radial-gradient(circle at center, #0e1326 0%, #05070c 100%);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            overflow: hidden;
+            pointer-events: auto; /* 阻斷所有背景事件 */
+        }
+        .container.locked-mode .card {
+            width: 100%;
+            max-width: 420px;
+            border-color: rgba(99, 102, 241, 0.25);
+            box-shadow: 0 0 40px rgba(99, 102, 241, 0.15),
+                        0 20px 40px rgba(0, 0, 0, 0.5);
+        }
     </style>
 </head>
 <body>
@@ -460,6 +485,7 @@
         let alarmIntervalId = null;
         let gainNode = null;
         let penaltyIntervalId = null;
+        let isChallengeActive = false; // F-03: 追蹤解題挑戰是否正處於活躍狀態
 
         // 初始化/解鎖音訊並載入題目
         async function startAlarmChallenge() {
@@ -476,6 +502,105 @@
             
             // 4. 啟動音量懲罰輪詢機制
             startPenaltyPolling();
+
+            // 5. F-03: 強制進入全螢幕並鎖定遮罩，阻斷背景交互
+            enterFullscreen();
+            document.querySelector('.container').classList.add('locked-mode');
+            
+            // 標記挑戰已啟動，開始追蹤焦點
+            setTimeout(() => {
+                isChallengeActive = true;
+            }, 500);
+        }
+
+        // F-03: 強制全螢幕方法
+        function enterFullscreen() {
+            const docElm = document.documentElement;
+            if (docElm.requestFullscreen) {
+                docElm.requestFullscreen().catch(err => console.log("全螢幕請求受阻 (需使用者操作解鎖): ", err));
+            } else if (docElm.mozRequestFullScreen) { /* Firefox */
+                docElm.mozRequestFullScreen();
+            } else if (docElm.webkitRequestFullscreen) { /* Chrome, Safari and Opera */
+                docElm.webkitRequestFullscreen();
+            } else if (docElm.msRequestFullscreen) { /* IE/Edge */
+                docElm.msRequestFullscreen();
+            }
+        }
+
+        // F-03: 結束全螢幕方法
+        function exitFullscreen() {
+            try {
+                if (document.fullscreenElement) {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen().catch(err => console.log("退出全螢幕失敗: ", err));
+                    } else if (document.mozCancelFullScreen) {
+                        document.mozCancelFullScreen();
+                    } else if (document.webkitExitFullscreen) {
+                        document.webkitExitFullscreen();
+                    } else if (document.msExitFullscreen) {
+                        document.msExitFullscreen();
+                    }
+                }
+            } catch (e) {
+                console.error("退出全螢幕異常: ", e);
+            }
+        }
+
+        // F-03: 視窗焦點與分頁可見性監聽，阻斷任何逃逸與作弊手段
+        window.addEventListener('blur', () => {
+            triggerCheatPenalty();
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                triggerCheatPenalty();
+            }
+        });
+
+        // F-03: 觸發作弊懲罰
+        async function triggerCheatPenalty() {
+            if (!isChallengeActive) return;
+            
+            // 暫時阻斷重複觸發
+            isChallengeActive = false;
+            
+            try {
+                const response = await fetch('/api/alarms/cheat-penalty', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 處以終極處置警告！使用 alert 阻斷使用者操作
+                    alert("⚠️ 偵測到切換視窗/逃避作弊！\n\n處以終極懲罰：更換全新超級地獄難度題目，且鬧鈴音量直接拉滿至 100%！");
+                    
+                    // 重新寫入新生成的超長地獄題目
+                    document.getElementById('questionText').innerText = data.question;
+                    
+                    // 清空原本的輸入欄
+                    clearInput();
+                    
+                    // 後端計時已被回溯 20 秒，前端音量直接拉滿
+                    if (gainNode && audioCtx) {
+                        gainNode.gain.setValueAtTime(1.0, audioCtx.currentTime);
+                    }
+                    
+                    // 同步最新的 UI (100% 音量，Level 4 紅色極速閃爍)
+                    updatePenaltyUI(data.elapsed_seconds, 100, 4);
+                    
+                    // 確保仍處於全螢幕與鎖定狀態
+                    enterFullscreen();
+                    document.querySelector('.container').classList.add('locked-mode');
+                }
+            } catch (e) {
+                console.error("回報作弊懲罰請求失敗:", e);
+            } finally {
+                // 延遲重設焦點監聽，防止彈跳視窗引發循環觸發
+                setTimeout(() => {
+                    if (document.getElementById('audioModal').classList.contains('hidden') && 
+                        !document.querySelector('.bell-icon').innerText.includes("☀️")) {
+                        isChallengeActive = true;
+                    }
+                }, 1000);
+            }
         }
 
         // 呼叫後端 API 啟動計時
@@ -685,6 +810,7 @@
 
                 if (data.success) {
                     // 答對處理
+                    isChallengeActive = false; // F-03: 關閉焦點偵測，避免退出全螢幕觸發作弊
                     stopAlarmSound();
                     showToast("🎉 " + data.message, true);
                     
@@ -695,6 +821,10 @@
                     document.getElementById('inputDisplay').style.color = "var(--success-color)";
                     document.querySelector('.bell-icon').style.animation = "none";
                     document.querySelector('.bell-icon').innerText = "☀️";
+                    
+                    // F-03: 解除全螢幕並還原遮罩
+                    exitFullscreen();
+                    document.querySelector('.container').classList.remove('locked-mode');
                     
                     // 移除紅色呼吸燈效果
                     const overlay = document.querySelector('.alarm-pulse-overlay');
