@@ -154,13 +154,27 @@
         }
 
         .formula-text {
-            font-size: 3.5rem;
+            font-size: 1.8rem; /* 縮小字體以完美呈現 7 數 6 運算子的超長算式 */
             font-weight: 800;
             font-family: 'Outfit', sans-serif;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
             color: #ffffff;
             text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
             transition: transform 0.1s ease;
+            white-space: nowrap; /* 確保算式單行呈現不換行錯位 */
+            overflow-x: auto; /* 超出寬度時提供流暢的水平滾動 */
+            padding: 8px 4px;
+        }
+
+        .formula-text::-webkit-scrollbar {
+            height: 4px;
+        }
+        .formula-text::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.01);
+        }
+        .formula-text::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
         }
 
         /* 左右晃動動畫 (答錯時觸發) */
@@ -444,16 +458,33 @@
         let currentInput = "";
         let audioCtx = null;
         let alarmIntervalId = null;
+        let gainNode = null;
+        let penaltyIntervalId = null;
 
         // 初始化/解鎖音訊並載入題目
-        function startAlarmChallenge() {
+        async function startAlarmChallenge() {
             document.getElementById('audioModal').classList.add('hidden');
             
-            // 1. 初始化 Web Audio API 生成鬧鈴音效
+            // 1. 呼叫後端 API 初始化計時器
+            await startAlarmTimer();
+            
+            // 2. 初始化 Web Audio API 生成鬧鈴音效 (包含 GainNode)
             initAlarmSound();
             
-            // 2. 呼叫後端 API 取得隨機題目
+            // 3. 呼叫後端 API 取得隨機題目
             loadQuestion();
+            
+            // 4. 啟動音量懲罰輪詢機制
+            startPenaltyPolling();
+        }
+
+        // 呼叫後端 API 啟動計時
+        async function startAlarmTimer() {
+            try {
+                await fetch('/api/alarms/start', { method: 'POST' });
+            } catch (e) {
+                console.error("初始化後端計時器失敗:", e);
+            }
         }
 
         // 利用 Web Audio API 建立純前端電子鬧鈴音效 (無須任何 mp3 檔案)
@@ -462,7 +493,13 @@
                 window.AudioContext = window.AudioContext || window.webkitAudioContext;
                 audioCtx = new AudioContext();
                 
-                // 定時產生蜂鳴聲
+                // 建立 GainNode 用於調控音量
+                gainNode = audioCtx.createGain();
+                // 初始音量設定為 20% (與後端初始懲罰對齊)
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gainNode.connect(audioCtx.destination);
+                
+                // 定時產生嗶嗶蜂鳴聲
                 alarmIntervalId = setInterval(() => {
                     playBeep(880, 0.15); // 產生高頻 A5 聲
                     setTimeout(() => playBeep(880, 0.15), 200);
@@ -474,33 +511,34 @@
 
         // 產生單次嗶嗶聲
         function playBeep(frequency, duration) {
-            if (!audioCtx || audioCtx.state === 'suspended') return;
+            if (!audioCtx || audioCtx.state === 'suspended' || !gainNode) return;
             
             const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
             
             osc.type = "sine"; // 正弦波
             osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
             
-            gain.gain.setValueAtTime(0.12, audioCtx.currentTime); // 控制適當音量
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-            
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
+            // 連接至 gainNode 控制音量，再由 gainNode 連接 destination
+            osc.connect(gainNode);
             
             osc.start();
             osc.stop(audioCtx.currentTime + duration);
         }
 
-        // 停止鬧鈴聲
+        // 停止鬧鈴聲與定時器
         function stopAlarmSound() {
             if (alarmIntervalId) {
                 clearInterval(alarmIntervalId);
                 alarmIntervalId = null;
             }
+            if (penaltyIntervalId) {
+                clearInterval(penaltyIntervalId);
+                penaltyIntervalId = null;
+            }
             if (audioCtx) {
                 audioCtx.close();
                 audioCtx = null;
+                gainNode = null;
             }
         }
 
@@ -518,6 +556,56 @@
             } catch (error) {
                 console.error("Error loading question:", error);
                 showToast("❌ 網路連線異常，無法連線後端！", false);
+            }
+        }
+
+        // 啟動定時輪詢懲罰 API (每 2 秒與後端同步一次，極速緊迫節奏)
+        function startPenaltyPolling() {
+            // 立即執行一次同步
+            syncPenalty();
+            
+            // 每 2 秒同步一次
+            penaltyIntervalId = setInterval(syncPenalty, 2000);
+        }
+
+        async function syncPenalty() {
+            try {
+                const response = await fetch('/api/alarms/check-penalty');
+                const data = await response.json();
+                
+                if (data.success && gainNode && audioCtx) {
+                    const volRatio = data.volume_percentage / 100;
+                    
+                    // 使用 linearRampToValueAtTime 讓音量在 0.8 秒內平滑漸變，與 2 秒輪詢極速響應
+                    gainNode.gain.linearRampToValueAtTime(volRatio, audioCtx.currentTime + 0.8);
+                    
+                    // 動態更新前端 UI
+                    updatePenaltyUI(data.elapsed_seconds, data.volume_percentage, data.penalty_level);
+                }
+            } catch (e) {
+                console.error("同步音量懲罰狀態失敗:", e);
+            }
+        }
+
+        // 更新懲罰 UI 狀態
+        function updatePenaltyUI(elapsed, volPercent, level) {
+            // 1. 更新副標題呈現當前流逝秒數與音量
+            const subtitle = document.getElementById('statusSubtitle');
+            if (subtitle) {
+                subtitle.innerHTML = `已響鈴 <span style="color:var(--danger-color); font-weight:800;">${elapsed}</span> 秒 | 當前音量：<span style="color:var(--danger-color); font-weight:800;">${volPercent}%</span>`;
+            }
+            
+            // 2. 隨著音量比例上升，同步加快紅色呼吸燈的閃爍頻率
+            const overlay = document.querySelector('.alarm-pulse-overlay');
+            if (overlay) {
+                // level 越低閃爍越慢（如 3 秒），level 最高 (4) 時閃爍頻率高達 0.6 秒
+                const speed = Math.max(0.5, 3.0 - level * 0.6);
+                overlay.style.animationDuration = `${speed}s`;
+                
+                // 增強紅暈的視覺衝擊
+                if (level > 0) {
+                    overlay.style.boxShadow = `inset 0 0 ${40 + level * 20}px rgba(239, 68, 68, ${0.1 + level * 0.08})`;
+                }
             }
         }
 
@@ -558,14 +646,18 @@
         // 輕微按鍵音效回饋
         function playKeyTapTone(freq, dur) {
             if (!audioCtx) return;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + dur);
+            try {
+                const osc = audioCtx.createOscillator();
+                const tapGain = audioCtx.createGain();
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                tapGain.gain.setValueAtTime(0.015, audioCtx.currentTime);
+                osc.connect(tapGain);
+                tapGain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + dur);
+            } catch (e) {
+                console.error("Play tap tone failed:", e);
+            }
         }
 
         // 送出答案驗證
@@ -603,8 +695,13 @@
                     document.getElementById('inputDisplay').style.color = "var(--success-color)";
                     document.querySelector('.bell-icon').style.animation = "none";
                     document.querySelector('.bell-icon').innerText = "☀️";
-                    document.querySelector('.alarm-pulse-overlay').style.animation = "none";
-                    document.querySelector('.alarm-pulse-overlay').style.boxShadow = "none";
+                    
+                    // 移除紅色呼吸燈效果
+                    const overlay = document.querySelector('.alarm-pulse-overlay');
+                    if (overlay) {
+                        overlay.style.animation = "none";
+                        overlay.style.boxShadow = "none";
+                    }
                     
                     // 禁用按鍵
                     const keys = document.querySelectorAll('.key');

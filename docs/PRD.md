@@ -33,11 +33,12 @@
   - 題目必須在後端動態生成，嚴格禁止前端產生或儲存解答。
   - 除法運算必須保證能夠整除，避免出現無限小數。
 
-### F-02: 鬧鐘設定與多組管理
-- **使用者故事**：作為一名「上班族」，我希望能夠設定多組不同時間的鬧鐘，並能自由啟用、停用、新增或刪除，以便適應工作日與週末不同的作息安排。
+### F-02: 階梯音量懲罰功能 (核心功能)
+- **使用者故事**：作為一名「睡眠極沉的用戶」，我希望鬧鐘在響起後若我遲遲沒有解出題目，鈴聲音量會每隔 30 秒自動放大 20%，以便透過逐漸增強的聽覺與壓力刺激強迫我加快解題，防止我聽著鈴聲繼續睡。
 - **主要規格**：
-  - 支援設定時間（時、分）、重複週期（每週一至週五、週末等）。
-  - 可為每組鬧鐘獨立指定解題難度（簡單、中等、困難）。
+  - 後端必須精確記錄鬧鐘開始響鈴的時間戳記（以 Session 保持）。
+  - 每過 30 秒若挑戰未解除，音量放大 20%，直到達到最大硬體/軟體上限 (100%)。
+  - 提供動態查詢 API，供前端定時同步最新的音量狀態與懲罰層級。
 
 ### F-03: 難度與題型自訂
 - **使用者故事**：作為一名「數學不擅長但想強迫起床的用戶」，我希望可以自由調整鬧鐘的解題難度與運算子類型，以便我能以適合自己的心智負擔逐漸建立起床習慣。
@@ -220,40 +221,185 @@ class MathProblemGenerator:
 
 ---
 
-## 5. MVP 範圍規劃
+## 5. F-02 階梯音量懲罰功能規劃
 
-為確保專案能穩健推進，我們將功能劃分為三個優先級層次：
+本章節為 F-02 功能的詳細核心設計，包含後端時間戳記紀錄、階梯增益演算法、新增的 API 路由，以及前端 Web Audio API 定時器音量更新規格。
+
+### 5.1 後端 Python (Flask) 鬧鐘計時與音量懲罰演算法
+
+後端主要負責時間狀態的可靠記錄與公式計算，防止前端時間被惡意篡改或因網頁重整而重置計時。
+
+#### A. 鬧鐘響起計時邏輯
+1. 當用戶點擊開始按鈕進入解題挑戰時，前端發送請求初始化計時。
+2. 後端將當前 Unix 時間戳記（時間戳）寫入 Flask 的加密 Session 中：`session['alarm_start_time'] = time.time()`。
+3. 此時間戳記一旦設定，直到成功答對題目呼叫 `/api/verify_answer` 通過後，才會伴隨正確答案一同被清除。網頁即使重新整理，計時也不會被重設。
+
+#### B. 階梯音量懲罰演算法
+* **初始音量**：$20\%$ (0.2)
+* **增益間隔**：每過 $30$ 秒，音量放大 $20\%$ (0.2)
+* **最大上限**：$100\%$ (1.0)
+* **公式計算**：
+  $$\text{Volume Ratio} = \min\left(1.0,\ 0.2 + \left\lfloor \frac{\text{Elapsed Seconds}}{30} \right\rfloor \times 0.2\right)$$
+* **懲罰等級 (Penalty Level)**：
+  $$\text{Penalty Level} = \min\left(4,\ \left\lfloor \frac{\text{Elapsed Seconds}}{30} \right\rfloor\right)$$
+  *(Level 0 = 20% 音量, Level 1 = 40% 音量, ..., Level 4 = 100% 音量)*
+
+#### C. 後端 Python 程式碼邏輯預想
+```python
+import time
+
+def calculate_volume_penalty(start_time):
+    """
+    計算自鬧鐘響起後流逝的時間與對應的音量比例
+    """
+    elapsed_seconds = int(time.time() - start_time)
+    
+    # 階梯音量計算 (每 30 秒提升 20%，最低 20%，最高 100%)
+    penalty_steps = elapsed_seconds // 30
+    volume_percentage = min(100.0, 20.0 + (penalty_steps * 20.0))
+    penalty_level = min(4, penalty_steps)
+    
+    return {
+        "elapsed_seconds": elapsed_seconds,
+        "volume_percentage": volume_percentage,
+        "penalty_level": penalty_level
+    }
+```
+
+---
+
+### 5.2 新增 API 路由設計
+
+配合 F-02 的運作，新增以下兩個 API 端點：
+
+| API 端點 | HTTP 方法 | 說明 | 請求參數 (JSON) | 回傳參數 (JSON) |
+| :--- | :--- | :--- | :--- | :--- |
+| `/api/alarms/start` | `POST` | 初始化鬧鐘開始時間，啟動後端計時 | 無 | `{"success": true, "start_time": 1780453200}` |
+| `/api/alarms/check-penalty` | `GET` | 查詢當前流逝秒數、應達音量百分比與懲罰等級 | 無 | `{"success": true, "elapsed_seconds": 65, "volume_percentage": 60.0, "penalty_level": 2}` |
+
+#### 詳細驗證流程：
+1. 用戶點擊進入解題 $\rightarrow$ 前端呼叫 `POST /api/alarms/start` $\rightarrow$ 後端建立 `session['alarm_start_time']`。
+2. 前端透過 JavaScript `setInterval` 定時器（例如每 5 秒）呼叫 `GET /api/alarms/check-penalty`。
+3. 後端讀取 Session 計算，回傳最新的音量比例 `volume_percentage`（如 `60.0`）與 `penalty_level`（如 `2`）。
+4. 成功解題呼叫 `POST /api/verify_answer` 後，後端呼叫 `session.pop('alarm_start_time', None)` 完整清除計時狀態。
+
+---
+
+### 5.3 前端 JS 與 Web Audio API 配合更新音量機制
+
+前端採用 Vanilla JS 配合 HTML5 的 Web Audio API 實現平滑、漸進的音量調整：
+
+#### A. Web Audio API 架構設計
+前端在初始化音訊時，需在 `OscillatorNode`（聲音產生器）與 `AudioDestinationNode`（喇叭輸出）之間插入一個 **`GainNode`（音量增益節點）**。
+
+```
+[OscillatorNode] ---> [GainNode (控制音量)] ---> [audioCtx.destination]
+```
+
+#### B. 前端 JS 定時輪詢與平滑音量控制代碼預想
+```javascript
+let gainNode = null;
+let penaltyIntervalId = null;
+
+// 在初始化音效時綁定 GainNode
+function initAlarmSoundWithGain() {
+    audioCtx = new AudioContext();
+    gainNode = audioCtx.createGain();
+    
+    // 初始音量設定為 20%
+    gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+    gainNode.connect(audioCtx.destination);
+    
+    // 定時播放鬧鈴
+    alarmIntervalId = setInterval(() => {
+        playBeepWithGain(880, 0.15);
+    }, 1000);
+}
+
+function playBeepWithGain(frequency, duration) {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+    
+    // 連接至 gainNode 而非直接連 destination
+    osc.connect(gainNode);
+    
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+}
+
+// 啟動定時輪詢懲罰 API
+function startPenaltyPolling() {
+    // 每 5 秒與後端同步一次最新的懲罰狀態
+    penaltyIntervalId = setInterval(async () => {
+        try {
+            const response = await fetch('/api/alarms/check-penalty');
+            const data = await response.json();
+            
+            if (data.success && gainNode) {
+                const volRatio = data.volume_percentage / 100;
+                
+                // 使用 linearRampToValueAtTime 讓音量在 1 秒內平滑漸變，避免爆音
+                gainNode.gain.linearRampToValueAtTime(volRatio, audioCtx.currentTime + 1.0);
+                
+                // 動態更新前端 UI：呈現當前懲罰秒數與警示狀態
+                updatePenaltyUI(data.elapsed_seconds, data.volume_percentage, data.penalty_level);
+            }
+        } catch (e) {
+            console.error("同步音量懲罰狀態失敗:", e);
+        }
+    }, 5000);
+}
+
+function updatePenaltyUI(elapsed, volPercent, level) {
+    const subtitle = document.getElementById('statusSubtitle');
+    subtitle.innerHTML = `已響鈴 <span style="color:var(--danger-color); font-weight:800;">${elapsed}</span> 秒 | 當前音量：<span style="color:var(--danger-color); font-weight:800;">${volPercent}%</span>`;
+    
+    // 依據懲罰等級 level (0~4) 調整背景紅色呼吸燈的閃爍速度與強度
+    const overlay = document.querySelector('.alarm-pulse-overlay');
+    if (overlay) {
+        const speed = Math.max(0.5, 3 - level * 0.6); // level 越高，呼吸頻率越快
+        overlay.style.animationDuration = `${speed}s`;
+    }
+}
+```
+
+---
+
+## 6. MVP 範圍規劃
+
+我們更新功能優先級層次如下：
 
 ```mermaid
 kanban
   Must_Have["Must Have (第一階段核心)"]
     F-01_動態數學解題功能
-    F-02_單組鬧鐘響鈴觸發機制
-    後端_Session_安全答案驗證
-    基礎網頁解題介面
+    F-02_階梯音量懲罰功能 (後端計時與 volume 路由)
+    後端_Session_安全答案與時間驗證
+    基礎網頁解題與音量控制介面
   Should_Have["Should Have (第二階段優化)"]
     F-03_簡單/中等/困難三段難度切換
+    Web_Audio_API_GainNode_音量平滑漸變
     實體虛擬大按鍵鍵盤與輸入動畫
-    HTML5_Audio_音效循環與解除控制
   Nice_to_Have["Nice to Have (第三階段加分)"]
     F-04_解題時間與正確率歷史統計圖表
     F-05_貪睡限制與每貪睡一次難度升級機制
-    漸進式警報音量增強功能
 ```
 
 ---
 
-## 6. 專案成員與分工
+## 7. 專案成員與分工
 
-本專案由開發團隊協同合作，具體分工如下表所示（團隊成員可於後續對齊會議中填寫）：
+本專案由開發團隊協同合作，具體分工如下表所示：
 
 | 角色 / 職責 | 負責人 | 預估時數 | 交付產出物 | 備註 |
 | :--- | :--- | :--- | :--- | :--- |
 | **產品經理 (PM)** | 待指派 | | 產品需求文件 (PRD)、功能驗收規格 | |
-| **後端工程師 (Backend)** | 待指派 | | Flask 路由、動態數學生成演算法、Session 驗證 API | |
-| **前端工程師 (Frontend)** | 待指派 | | HTML 解題挑戰頁面、虛擬鍵盤、CSS 搖晃動畫與音訊解鎖邏輯 | |
-| **測試工程師 (QA)** | 待指派 | | 功能測試案例、防作弊繞過測試報告 | |
+| **後端工程師 (Backend)** | 待指派 | | Flask 路由、動態數學生成演算法、後端時間戳與音量演算法 API | |
+| **前端工程師 (Frontend)** | 待指派 | | HTML 解題挑戰頁面、虛擬鍵盤、Web Audio API GainNode 控制、輪詢邏輯 | |
+| **測試工程師 (QA)** | 待指派 | | 功能測試案例、音量漸強驗收報告 | |
 
 ---
 
-*文件版本：v1.0 | 規劃日期：2026-06-02*
+*文件版本：v1.1 | 規劃日期：2026-06-02*
