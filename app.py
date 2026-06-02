@@ -169,6 +169,66 @@ def check_penalty():
         "penalty_level": penalty_level
     })
 
+@app.route('/api/alarms/cheat-penalty', methods=['POST'])
+def cheat_penalty():
+    """
+    API 5: 作弊懲罰路由 (F-03)
+    - 當前端偵測到離開焦點或切換視窗時觸發
+    - 重新生成一題全新的 7 數字、6 運算子超級地獄算式
+    - 將 Session 中的 alarm_start_time 往前移 20 秒，強行使下次 check-penalty 音量拉滿至 100%
+    """
+    import time
+    
+    # 將開始時間推回 20 秒前，強制達到 100% 音量 (Level 4)
+    session['alarm_start_time'] = time.time() - 20.0
+    
+    # 重新生成一組全新的長算式
+    attempts = 0
+    while attempts < 200:
+        attempts += 1
+        nums = []
+        for i in range(7):
+            if i % 2 == 0:
+                nums.append(random.randint(10, 25))
+            else:
+                nums.append(random.randint(2, 9))
+        
+        ops = []
+        for i in range(6):
+            available_ops = ['+', '-', '*']
+            if ops.count('*') >= 2:
+                available_ops = ['+', '-']
+            ops.append(random.choice(available_ops))
+        
+        formula_parts = []
+        for i in range(7):
+            formula_parts.append(str(nums[i]))
+            if i < 6:
+                formula_parts.append(ops[i])
+        
+        formula_str = " ".join(formula_parts)
+        
+        try:
+            answer = eval(formula_str)
+            if 10 <= answer <= 500 and isinstance(answer, int):
+                display_formula = formula_str.replace("*", "×")
+                break
+        except Exception:
+            continue
+    else:
+        display_formula = "15 × 5 + 20 - 10 × 4 + 12 - 6"
+        answer = 61
+
+    session['correct_answer'] = int(answer)
+    
+    return jsonify({
+        "success": True,
+        "question": display_formula,
+        "elapsed_seconds": 20,
+        "volume_percentage": 100.0,
+        "penalty_level": 4
+    })
+
 if __name__ == '__main__':
     # 啟動開發伺服器
     app.run(debug=True, host='127.0.0.1', port=5000)
