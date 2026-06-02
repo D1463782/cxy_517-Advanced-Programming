@@ -559,13 +559,13 @@
             }
         }
 
-        // 啟動定時輪詢懲罰 API (每 5 秒與後端同步一次)
+        // 啟動定時輪詢懲罰 API (每 2 秒與後端同步一次，極速緊迫節奏)
         function startPenaltyPolling() {
             // 立即執行一次同步
             syncPenalty();
             
-            // 每 5 秒同步一次
-            penaltyIntervalId = setInterval(syncPenalty, 5000);
+            // 每 2 秒同步一次
+            penaltyIntervalId = setInterval(syncPenalty, 2000);
         }
 
         async function syncPenalty() {
@@ -576,8 +576,8 @@
                 if (data.success && gainNode && audioCtx) {
                     const volRatio = data.volume_percentage / 100;
                     
-                    // 使用 linearRampToValueAtTime 讓音量在 1 秒內平滑漸變，避免爆音
-                    gainNode.gain.linearRampToValueAtTime(volRatio, audioCtx.currentTime + 1.0);
+                    // 使用 linearRampToValueAtTime 讓音量在 0.8 秒內平滑漸變，與 2 秒輪詢極速響應
+                    gainNode.gain.linearRampToValueAtTime(volRatio, audioCtx.currentTime + 0.8);
                     
                     // 動態更新前端 UI
                     updatePenaltyUI(data.elapsed_seconds, data.volume_percentage, data.penalty_level);

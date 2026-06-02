@@ -144,8 +144,8 @@ def start_alarm():
 @app.route('/api/alarms/check-penalty', methods=['GET'])
 def check_penalty():
     """
-    API 4: 查詢當前流逝秒數、音量百分比與懲罰等級
-    - 起始音量 20%，每超過 30 秒增加 20% 音量，直到最大 100%
+    API 4: 查詢當前流逝秒數、音量百分比與懲罰等級 (高壓超快節奏)
+    - 每過 5 秒未解出題目，音量即暴增 25%，最快 15 秒內即達到 100% 最大音量
     """
     import time
     start_time = session.get('alarm_start_time')
@@ -157,9 +157,9 @@ def check_penalty():
         
     elapsed_seconds = int(time.time() - start_time)
     
-    # 階梯音量懲罰計算 (每 30 秒增加 20%，最底 20%，上限 100%)
-    penalty_steps = elapsed_seconds // 30
-    volume_percentage = min(100.0, 20.0 + (penalty_steps * 20.0))
+    # 階梯音量懲罰計算：每 5 秒增加 25%，初始音量 25%，最高上限 100%
+    penalty_steps = elapsed_seconds // 5
+    volume_percentage = min(100.0, 25.0 + (penalty_steps * 25.0))
     penalty_level = min(4, penalty_steps)
     
     return jsonify({
