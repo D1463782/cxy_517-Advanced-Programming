@@ -42,6 +42,7 @@ def create_app():
                 'alarm.verify_game',
                 'alarm.get_sos_sentence',
                 'alarm.verify_sos',
+                'alarm.force_cancel_alarm',
                 'static',
             ]
             if request.endpoint not in allowed_endpoints:

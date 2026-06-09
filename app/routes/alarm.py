@@ -161,12 +161,14 @@ def active_alarm(alarm_id):
         session['math_answer'] = answer
 
     correct_count = session.get('correct_count', 0)
+    wrong_count = session.get('wrong_count', 0)
 
     return render_template(
         'alarm_active.html',
         alarm=alarm,
         question=session['math_question'],
         correct_count=correct_count,
+        wrong_count=wrong_count,
         task_count=actual_task_count,
         difficulty=actual_difficulty
     )
@@ -182,14 +184,22 @@ def verify_answer(alarm_id):
     data = request.get_json(silent=True) or {}
     user_answer_str = str(data.get('answer', '')).strip()
 
+    actual_difficulty = _get_punished_difficulty(alarm['difficulty'], alarm['snooze_count'])
+    actual_task_count = alarm['task_count'] + alarm['snooze_count']
+
     try:
         user_answer = int(user_answer_str)
     except (ValueError, TypeError):
-        return jsonify({'success': False, 'finished': False, 'message': '請輸入有效的整數答案！'})
+        return jsonify({
+            'success': False,
+            'finished': False,
+            'message': '請輸入有效的整數答案！',
+            'correct_count': session.get('correct_count', 0),
+            'wrong_count': session.get('wrong_count', 0),
+            'task_count': actual_task_count
+        })
 
     correct_answer = session.get('math_answer')
-    actual_difficulty = _get_punished_difficulty(alarm['difficulty'], alarm['snooze_count'])
-    actual_task_count = alarm['task_count'] + alarm['snooze_count']
 
     if user_answer == correct_answer:
         # 答對
@@ -199,7 +209,14 @@ def verify_answer(alarm_id):
         if correct_count >= actual_task_count:
             # 數學挑戰達標，標記為 math_finished 供後續驗證，但不直接解鎖
             session['math_finished'] = True
-            return jsonify({'success': True, 'finished': False, 'show_game': True})
+            return jsonify({
+                'success': True,
+                'finished': False,
+                'show_game': True,
+                'correct_count': correct_count,
+                'wrong_count': session.get('wrong_count', 0),
+                'task_count': actual_task_count
+            })
         else:
             # 未達標：產生下一題
             question, answer = _generate_math_question(actual_difficulty)
@@ -210,6 +227,7 @@ def verify_answer(alarm_id):
                 'finished': False,
                 'next_question': question,
                 'correct_count': correct_count,
+                'wrong_count': session.get('wrong_count', 0),
                 'task_count': actual_task_count
             })
     else:
@@ -225,8 +243,29 @@ def verify_answer(alarm_id):
             'message': '計算錯誤，題目已更新！',
             'next_question': question,
             'correct_count': session.get('correct_count', 0),
+            'wrong_count': session.get('wrong_count', 0),
             'task_count': actual_task_count
         })
+
+
+@alarm_bp.route('/alarms/active/<int:alarm_id>/force-cancel', methods=['POST'])
+def force_cancel_alarm(alarm_id):
+    """直接取消鬧鐘：當答題數超過設定數量時，允許使用者點擊按鈕直接解除鬧鐘。"""
+    alarm = Alarm.get_by_id(alarm_id)
+    if not alarm:
+        return jsonify({'success': False, 'message': '找不到該鬧鐘'}), 404
+
+    # 重設貪睡狀態
+    Alarm.reset_snooze(alarm_id)
+
+    # 單次鬧鐘自動關閉
+    if not alarm['repeat_days']:
+        Alarm.toggle_status(alarm_id)
+
+    # 清除 Session 響鈴狀態
+    _clear_ringing_session()
+
+    return jsonify({'success': True, 'message': '鬧鐘已成功取消！'})
 
 
 @alarm_bp.route('/alarms/active/<int:alarm_id>/verify-game', methods=['POST'])

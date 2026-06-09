@@ -115,6 +115,13 @@
             <button class="btn-trigger-sos" onclick="MathAlarm.triggerSOSMode({{ alarm.id }})">
                 🚨 卡關求救？緊急罰寫解鎖
             </button>
+
+            <!-- 直接取消按鈕（答錯次數達到設定數量時顯示） -->
+            <button id="cancelAlarmBtn" class="btn-cancel-alarm" 
+                    style="display: {% if wrong_count >= task_count %}block{% else %}none{% endif %}; margin-top: 15px; width: 100%;" 
+                    onclick="MathAlarm.forceCancelAlarm({{ alarm.id }})">
+                🛑 直接取消鬧鐘 (答題數已達設定數量)
+            </button>
         </div>
     </div>
 
