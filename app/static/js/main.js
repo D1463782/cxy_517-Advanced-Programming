@@ -8,10 +8,10 @@ const MathAlarm = {
   game: {
     canvas: null,
     ctx: null,
-    dot: { x: 0, y: 0, radius: 15, vx: 3, vy: 3 },
+    dot: { x: 0, y: 0, radius: 25, vx: 1.5, vy: 1.5 },
     hits: 0,
-    requiredHits: 5,
-    timeLeft: 5.0,
+    requiredHits: 2,
+    timeLeft: 10.0,
     gameInterval: null,
     active: false
   },
@@ -441,6 +441,16 @@ const MathAlarm = {
     })
     .then(res => res.json())
     .then(data => {
+      // 判斷是否顯示取消鬧鐘按鈕（當答錯題數達到或超過設定題數時）
+      const cancelBtn = document.getElementById('cancelAlarmBtn');
+      if (cancelBtn && data.wrong_count !== undefined && data.task_count !== undefined) {
+        if (data.wrong_count >= data.task_count) {
+          cancelBtn.style.display = 'block';
+        } else {
+          cancelBtn.style.display = 'none';
+        }
+      }
+
       if (data.success) {
         input.value = "";
         
@@ -509,6 +519,34 @@ const MathAlarm = {
         window.location.href = "/";
       } else {
         alert(data.message || "貪睡失敗！");
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert("無法通訊與伺服器連接！");
+    });
+  },
+
+  // 直接取消鬧鐘 (AJAX)
+  forceCancelAlarm: function(alarmId) {
+    if (!confirm('確定要直接取消並關閉鬧鐘嗎？')) {
+      return;
+    }
+
+    fetch(`/alarms/active/${alarmId}/force-cancel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        this.stopAlarm();
+        clearInterval(this.elapsedTimer);
+        window.onbeforeunload = null; // 解除重整警告
+        alert(data.message);
+        window.location.href = "/";
+      } else {
+        alert(data.message || "取消鬧鐘失敗！");
       }
     })
     .catch(err => {
@@ -704,14 +742,14 @@ const MathAlarm = {
     const dot = this.game.dot;
     if (!canvas) return;
 
-    dot.radius = 12 + Math.random() * 6; // 隨機半徑 12 ~ 18
+    dot.radius = 20 + Math.random() * 8; // 隨機半徑 20 ~ 28 (更大球)
     dot.x = dot.radius + Math.random() * (canvas.width - dot.radius * 2);
     dot.y = dot.radius + Math.random() * (canvas.height - dot.radius * 2);
 
-    // 隨機方向速度 (-4 到 4) 且不為零
-    const baseSpeed = 2.5 + Math.min(this.elapsedSeconds * 0.05, 3.5); // 隨已過秒數增加難度
-    dot.vx = (Math.random() > 0.5 ? 1 : -1) * (baseSpeed + Math.random() * 2);
-    dot.vy = (Math.random() > 0.5 ? 1 : -1) * (baseSpeed + Math.random() * 2);
+    // 隨機方向速度 (-2 到 2) 且不為零，速度減慢
+    const baseSpeed = 1.2 + Math.min(this.elapsedSeconds * 0.02, 1.3); 
+    dot.vx = (Math.random() > 0.5 ? 1 : -1) * (baseSpeed + Math.random() * 1);
+    dot.vy = (Math.random() > 0.5 ? 1 : -1) * (baseSpeed + Math.random() * 1);
   },
 
   // 結束 Canvas 遊戲並向後端發送驗證 (F-07)
