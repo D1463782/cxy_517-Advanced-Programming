@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+{% block title %}MathAlarm — 鬧鐘首頁{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">🧠 數學醒腦鬧鐘</h1>
+    <p class="page-subtitle">用心算挑戰強制喚醒你的大腦</p>
+</div>
+
+<!-- ─── 音效授權開關 ─── -->
+<div class="audio-auth-card glass-card" id="audioAuthCard">
+    <div class="auth-content">
+        <div class="auth-icon-wrapper">
+            <span class="auth-icon" id="authIcon">🔇</span>
+        </div>
+        <div class="auth-text">
+            <h3>啟動醒腦鬧鐘系統</h3>
+            <p>點擊啟用音效監聽，確保鬧鐘響起時能正常發出聲音</p>
+        </div>
+        <button class="auth-btn" id="audioAuthBtn" onclick="MathAlarm.enableAudio()">
+            <span class="btn-pulse"></span>
+            啟用音效
+        </button>
+    </div>
+    <div class="auth-status" id="authStatus">
+        <span class="status-dot"></span>
+        <span class="status-text">音效尚未授權</span>
+    </div>
+</div>
+
+<!-- ─── 連續早起成就 (Streak Card) ─── -->
+{% if stats %}
+<div class="streak-card glass-card animate-fade-in">
+    <div class="streak-header">
+        <span class="streak-fire">🔥</span>
+        <div class="streak-title-group">
+            <h3>我的自律早起成就</h3>
+            <p>與睡魔搏鬥的榮譽勳章，養成良好作息！</p>
+        </div>
+    </div>
+    <div class="streak-stats-row">
+        <div class="streak-stat-item">
+            <span class="stat-value">{{ stats.current_streak }}</span>
+            <span class="stat-label">目前連續天數</span>
+        </div>
+        <div class="streak-stat-item">
+            <span class="stat-value">{{ stats.longest_streak }}</span>
+            <span class="stat-label">歷史最長天數</span>
+        </div>
+        <div class="streak-stat-item">
+            <span class="stat-value badge-title">
+                {% if stats.current_streak == 0 %}😴 起床困難戶
+                {% elif stats.current_streak <= 2 %}🐣 早起萌新
+                {% elif stats.current_streak <= 5 %}🏃 自律達人
+                {% else %}👑 晨之霸主{% endif %}
+            </span>
+            <span class="stat-label">目前早起稱號</span>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ─── 鬧鐘列表 ─── -->
+<section class="alarms-section">
+    <div class="section-header">
+        <h2>⏰ 我的鬧鐘</h2>
+        <span class="alarm-count">{{ alarms|length }} 組鬧鐘</span>
+    </div>
+
+    {% if alarms %}
+    <div class="alarms-grid">
+        {% for alarm in alarms %}
+        <div class="alarm-card glass-card {% if alarm.is_active %}active{% else %}inactive{% endif %}" data-alarm-id="{{ alarm.id }}">
+            <div class="alarm-card-header">
+                <div class="alarm-time-display">
+                    <span class="alarm-time">{{ alarm.time }}</span>
+                    {% if alarm.note %}
+                    <span class="alarm-note">{{ alarm.note }}</span>
+                    {% endif %}
+                </div>
+                <label class="toggle-switch" id="toggle-{{ alarm.id }}">
+                    <input type="checkbox" {% if alarm.is_active %}checked{% endif %}
+                           onchange="MathAlarm.toggleAlarm({{ alarm.id }})">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div class="alarm-card-body">
+                <div class="alarm-tags">
+                    <!-- 難度標籤 -->
+                    <span class="tag tag-{{ alarm.difficulty }}">
+                        {% if alarm.difficulty == 'easy' %}😊 簡單
+                        {% elif alarm.difficulty == 'medium' %}🤔 中等
+                        {% else %}🔥 困難{% endif %}
+                    </span>
+                    <!-- 題數 -->
+                    <span class="tag tag-count">📝 {{ alarm.task_count }} 題</span>
+                    <!-- 重複日 -->
+                    {% if alarm.repeat_days %}
+                    <span class="tag tag-repeat">🔁
+                        {% set day_names = {'1':'一','2':'二','3':'三','4':'四','5':'五','6':'六','0':'日'} %}
+                        {% for d in alarm.repeat_days.split(',') %}
+                            週{{ day_names.get(d, d) }}{% if not loop.last %}、{% endif %}
+                        {% endfor %}
+                    </span>
+                    {% else %}
+                    <span class="tag tag-once">🔔 單次</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="alarm-card-footer">
+                <button type="button" class="btn-edit" onclick="MathAlarm.openEditModal({{ alarm|tojson }})">
+                    ✏️ 編輯
+                </button>
+                <form action="{{ url_for('alarm.delete_alarm', alarm_id=alarm.id) }}" method="POST"
+                      onsubmit="return confirm('確定要刪除這組鬧鐘嗎？')">
+                    <button type="submit" class="btn-delete" title="刪除鬧鐘">
+                        🗑️ 刪除
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state glass-card">
+        <div class="empty-icon">😴</div>
+        <h3>目前尚無鬧鐘</h3>
+        <p>請點擊右下角的 <strong>＋</strong> 按鈕新增您的第一組鬧鐘！</p>
+    </div>
+    {% endif %}
+</section>
+
+<!-- ─── 浮動新增按鈕 (FAB) ─── -->
+<button class="fab" id="fabBtn" onclick="MathAlarm.openModal()">
+    <span class="fab-icon">＋</span>
+</button>
+
+<!-- ─── 新增鬧鐘 Modal ─── -->
+<div class="modal-overlay" id="alarmModal">
+    <div class="modal-content glass-card">
+        <div class="modal-header">
+            <h2>⏰ 新增鬧鐘</h2>
+            <button class="modal-close" onclick="MathAlarm.closeModal()">&times;</button>
+        </div>
+        <form action="{{ url_for('alarm.create') }}" method="POST" class="alarm-form">
+            <!-- 預設情境 (F-09) -->
+            <div class="form-group">
+                <label for="alarmPreset">套用預設情境</label>
+                <select id="alarmPreset" name="preset" class="form-input" onchange="MathAlarm.applyPreset(this.value)">
+                    <option value="custom" selected>✏️ 自訂模式</option>
+                    <option value="exam">🔥 考試地獄 (困難/5題/無貪睡)</option>
+                    <option value="weekday">🏫 平日上課 (中等/2題/可貪睡)</option>
+                    <option value="weekend">😊 週末溫和 (簡單/1題/可貪睡)</option>
+                </select>
+            </div>
+
+            <!-- 時間 -->
+            <div class="form-group">
+                <label for="alarmTime">響鈴時間</label>
+                <input type="time" id="alarmTime" name="time" required class="form-input form-input-time">
+            </div>
+
+            <!-- 重複星期 -->
+            <div class="form-group">
+                <label>重複星期</label>
+                <div class="weekday-selector">
+                    {% set days = [('1','一'),('2','二'),('3','三'),('4','四'),('5','五'),('6','六'),('0','日')] %}
+                    {% for val, name in days %}
+                    <label class="weekday-chip">
+                        <input type="checkbox" name="repeat_days" value="{{ val }}">
+                        <span class="chip-label">{{ name }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- 難度 -->
+            <div class="form-group">
+                <label for="alarmDifficulty">計算難度</label>
+                <div class="difficulty-selector">
+                    <label class="diff-option">
+                        <input type="radio" name="difficulty" value="easy" checked>
+                        <span class="diff-card">
+                            <span class="diff-emoji">😊</span>
+                            <span class="diff-name">簡單</span>
+                            <span class="diff-desc">加減法</span>
+                        </span>
+                    </label>
+                    <label class="diff-option">
+                        <input type="radio" name="difficulty" value="medium">
+                        <span class="diff-card">
+                            <span class="diff-emoji">🤔</span>
+                            <span class="diff-name">中等</span>
+                            <span class="diff-desc">乘法混合</span>
+                        </span>
+                    </label>
+                    <label class="diff-option">
+                        <input type="radio" name="difficulty" value="hard">
+                        <span class="diff-card">
+                            <span class="diff-emoji">🔥</span>
+                            <span class="diff-name">困難</span>
+                            <span class="diff-desc">三元混合</span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 題數 -->
+            <div class="form-group">
+                <label for="alarmTaskCount">答對題數</label>
+                <div class="task-count-selector">
+                    <button type="button" class="count-btn" onclick="MathAlarm.adjustCount(-1)">−</button>
+                    <input type="number" id="alarmTaskCount" name="task_count" value="1" min="1" max="10" class="form-input count-input" readonly>
+                    <button type="button" class="count-btn" onclick="MathAlarm.adjustCount(1)">＋</button>
+                </div>
+            </div>
+
+            <!-- 備註 -->
+            <div class="form-group">
+                <label for="alarmNote">備註（選填）</label>
+                <input type="text" id="alarmNote" name="note" class="form-input" placeholder="例如：早八必起！" maxlength="50">
+            </div>
+
+            <button type="submit" class="btn-submit">
+                <span>💾</span> 儲存鬧鐘
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        MathAlarm.startBackgroundCheck();
+    });
+</script>
+{% endblock %}
