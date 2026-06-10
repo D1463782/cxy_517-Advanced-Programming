@@ -482,16 +482,16 @@ def _generate_math_question(difficulty):
             b = random.randint(3, 9)
             c = random.randint(5, 20)
             d = random.randint(2, 5)
-            op = random.choice(['+', '-'])
             
             term1 = root * b
             term2 = c * d
+            # 若 term1 >= term2，可安全使用減法；否則只用加法
+            if term1 >= term2 + 1:
+                op = random.choice(['+', '-'])
+            else:
+                op = '+'
+            
             if op == '-':
-                # 確保結果為正值，如果 term1 < term2 則交換
-                if term1 < term2:
-                    root, b, c, d = c, d, root, b
-                    term1, term2 = term2, term1
-                    a = root * root
                 question = f"√{a} × {b} - {c} × {d}"
                 answer = term1 - term2
             else:
@@ -500,15 +500,15 @@ def _generate_math_question(difficulty):
                 
         elif mode == 2:
             # (a² ± b) × c
-            a = random.randint(4, 12)
-            a_sq = a * a
+            a = random.randint(5, 12)
+            a_sq = a * a  # 最小 25
             b = random.randint(10, 50)
             c = random.randint(2, 5)
             op = random.choice(['+', '-'])
             if op == '-':
-                # 確保內層運算不為負數或零
+                # 確保內層運算為正整數（a_sq - b > 0）
                 if a_sq <= b:
-                    b = random.randint(5, a_sq - 5) if a_sq > 5 else 1
+                    b = random.randint(5, max(5, a_sq - 5))
                 question = f"({a}² - {b}) × {c}"
                 answer = (a_sq - b) * c
             else:
@@ -522,13 +522,18 @@ def _generate_math_question(difficulty):
             b = random.randint(3, 8)
             b_sq = b * b
             c = random.randint(10, 99)
-            op = random.choice(['+', '-'])
             
-            term1 = root * b_sq
+            term1 = root * b_sq  # 最小 3*9=27
+            # 若 term1 >= c+1，可安全使用減法；否則只用加法
+            if term1 >= c + 1:
+                op = random.choice(['+', '-'])
+            else:
+                op = '+'
+            
             if op == '-':
-                # 確保結果不為負值
-                if term1 <= c:
-                    c = random.randint(5, max(10, term1 - 5))
+                # 額外防護：確保 c 嚴格小於 term1
+                if c >= term1:
+                    c = random.randint(1, term1 - 1)
                 question = f"√{a} × {b}² - {c}"
                 answer = term1 - c
             else:
