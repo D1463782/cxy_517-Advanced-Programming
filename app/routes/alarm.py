@@ -474,39 +474,65 @@ def _generate_math_question(difficulty):
         answer = (a * b + c) if op == '+' else (a * b - c)
 
     else:  # hard
-        mode = random.choice([1, 2])
+        mode = random.choice([1, 2, 3])
         if mode == 1:
-            a = random.randint(10, 30)
+            # √a × b ± c × d
+            root = random.choice([4, 5, 6, 7, 8, 9, 10])
+            a = root * root
             b = random.randint(3, 9)
+            c = random.randint(5, 20)
             d = random.randint(2, 5)
-            inner_op = random.choice(['+', '-'])
-            if inner_op == '-':
-                # 確保內層運算不為負
-                c = random.randint(5, max(10, a * b - 5))
-                question = f"({a} × {b} - {c}) × {d}"
-                answer = (a * b - c) * d
-            else:
-                c = random.randint(10, 50)
-                question = f"({a} × {b} + {c}) × {d}"
-                answer = (a * b + c) * d
-        else:
-            a = random.randint(10, 50)
-            b = random.randint(3, 9)
-            c = random.randint(10, 30)
-            d = random.randint(3, 8)
             op = random.choice(['+', '-'])
             
-            term1 = a * b
+            term1 = root * b
             term2 = c * d
             if op == '-':
                 # 確保結果為正值，如果 term1 < term2 則交換
                 if term1 < term2:
-                    a, b, c, d = c, d, a, b
+                    root, b, c, d = c, d, root, b
                     term1, term2 = term2, term1
-                question = f"{a} × {b} - {c} × {d}"
+                    a = root * root
+                question = f"√{a} × {b} - {c} × {d}"
                 answer = term1 - term2
             else:
-                question = f"{a} × {b} + {c} × {d}"
+                question = f"√{a} × {b} + {c} × {d}"
                 answer = term1 + term2
+                
+        elif mode == 2:
+            # (a² ± b) × c
+            a = random.randint(4, 12)
+            a_sq = a * a
+            b = random.randint(10, 50)
+            c = random.randint(2, 5)
+            op = random.choice(['+', '-'])
+            if op == '-':
+                # 確保內層運算不為負數或零
+                if a_sq <= b:
+                    b = random.randint(5, a_sq - 5) if a_sq > 5 else 1
+                question = f"({a}² - {b}) × {c}"
+                answer = (a_sq - b) * c
+            else:
+                question = f"({a}² + {b}) × {c}"
+                answer = (a_sq + b) * c
+                
+        else:
+            # √a × b² ± c
+            root = random.choice([3, 4, 5, 6, 7, 8, 9, 10])
+            a = root * root
+            b = random.randint(3, 8)
+            b_sq = b * b
+            c = random.randint(10, 99)
+            op = random.choice(['+', '-'])
+            
+            term1 = root * b_sq
+            if op == '-':
+                # 確保結果不為負值
+                if term1 <= c:
+                    c = random.randint(5, max(10, term1 - 5))
+                question = f"√{a} × {b}² - {c}"
+                answer = term1 - c
+            else:
+                question = f"√{a} × {b}² + {c}"
+                answer = term1 + c
 
     return question, answer

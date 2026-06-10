@@ -619,7 +619,7 @@ const MathAlarm = {
     this.game.canvas = canvas;
     this.game.ctx = canvas.getContext('2d');
     this.game.hits = 0;
-    this.game.timeLeft = 5.0;
+    this.game.timeLeft = 10.0; // 延長至 10 秒
     this.game.active = true;
 
     // 重設紅點座標
@@ -640,7 +640,7 @@ const MathAlarm = {
 
       // 計算點擊距離
       const dist = Math.sqrt((clickX - this.game.dot.x)**2 + (clickY - this.game.dot.y)**2);
-      if (dist <= this.game.dot.radius + 8) { // 加上 8px 緩衝區增加手勢靈敏度
+      if (dist <= this.game.dot.radius + 15) { // 加上 15px 寬裕緩衝區增加手勢靈敏度
         this.game.hits++;
         document.getElementById('gameHitsText').innerText = `${this.game.hits} / ${this.game.requiredHits}`;
         this.playSuccessSound(); // 點對提示
@@ -651,9 +651,9 @@ const MathAlarm = {
           this.resetDot(); // 點對之後隨機生成新紅點
         }
       } else {
-        this.playWrongSound(); // 點錯提示，球會加快
-        this.game.dot.vx *= 1.2;
-        this.game.dot.vy *= 1.2;
+        this.playWrongSound(); // 點錯提示，球些微加快
+        this.game.dot.vx *= 1.05;
+        this.game.dot.vy *= 1.05;
       }
     };
 
@@ -742,14 +742,14 @@ const MathAlarm = {
     const dot = this.game.dot;
     if (!canvas) return;
 
-    dot.radius = 20 + Math.random() * 8; // 隨機半徑 20 ~ 28 (更大球)
+    dot.radius = 30 + Math.random() * 10; // 隨機半徑加大至 30 ~ 40
     dot.x = dot.radius + Math.random() * (canvas.width - dot.radius * 2);
     dot.y = dot.radius + Math.random() * (canvas.height - dot.radius * 2);
 
-    // 隨機方向速度 (-2 到 2) 且不為零，速度減慢
-    const baseSpeed = 1.2 + Math.min(this.elapsedSeconds * 0.02, 1.3); 
-    dot.vx = (Math.random() > 0.5 ? 1 : -1) * (baseSpeed + Math.random() * 1);
-    dot.vy = (Math.random() > 0.5 ? 1 : -1) * (baseSpeed + Math.random() * 1);
+    // 隨機方向速度減慢
+    const baseSpeed = 0.6 + Math.min(this.elapsedSeconds * 0.01, 0.4); 
+    dot.vx = (Math.random() > 0.5 ? 1 : -1) * (baseSpeed + Math.random() * 0.5);
+    dot.vy = (Math.random() > 0.5 ? 1 : -1) * (baseSpeed + Math.random() * 0.5);
   },
 
   // 結束 Canvas 遊戲並向後端發送驗證 (F-07)
