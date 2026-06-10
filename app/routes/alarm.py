@@ -96,10 +96,18 @@ def active_check():
     # 星期：Python isoweekday() → 1=Mon…7=Sun，系統定義 1=Mon…0=Sun
     current_weekday = str(now.isoweekday() % 7)  # 轉換為 0=Sun, 1=Mon...6=Sat
 
+    # 取得已解除鬧鐘的紀錄（防止同一分鐘重複觸發）
+    dismissed = session.get('dismissed_alarms', {})
+    # 自動清理過期的解除紀錄（只保留當前分鐘的紀錄）
+    dismissed = {k: v for k, v in dismissed.items() if v == current_time_str}
+    session['dismissed_alarms'] = dismissed
+
     alarms = Alarm.get_all()
     for alarm in alarms:
         if not alarm['is_active']:
             continue
+
+        alarm_id_str = str(alarm['id'])
 
         # 檢查貪睡鬧鐘的下次響鈴時間
         if alarm['next_ring_time']:
@@ -114,6 +122,10 @@ def active_check():
 
         # 一般鬧鐘：比對時間與星期
         if alarm['time'] == current_time_str:
+            # 跳過已在本分鐘解除過的鬧鐘
+            if alarm_id_str in dismissed:
+                continue
+
             repeat_days = alarm['repeat_days']
             if repeat_days:
                 # 有設定重複日，檢查今天星期是否在清單中
@@ -411,7 +423,14 @@ def snooze_alarm(alarm_id):
 # ═══════════════════════════════════════════════
 
 def _clear_ringing_session():
-    """清除 Session 中所有與當前響鈴相關的資料。"""
+    """清除 Session 中所有與當前響鈴相關的資料，並記錄已解除的鬧鐘 ID 防止同分鐘重複觸發。"""
+    # 記錄已解除的鬧鐘 ID 與解除時的分鐘，防止同分鐘重複觸發
+    ringing_id = session.get('ringing_alarm_id')
+    if ringing_id is not None:
+        dismissed = session.get('dismissed_alarms', {})
+        dismissed[str(ringing_id)] = datetime.now().strftime('%H:%M')
+        session['dismissed_alarms'] = dismissed
+
     keys_to_remove = ['ringing_alarm_id', 'ring_start_time', 'math_question',
                       'math_answer', 'correct_count', 'wrong_count', 'math_finished',
                       'sos_sentence', 'sos_written_count']
