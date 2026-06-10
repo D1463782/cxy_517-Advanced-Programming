@@ -453,8 +453,8 @@ def _generate_math_question(difficulty):
     """根據難度等級隨機產生數學題目與正確答案。
 
     - easy: 兩個兩位數的加減法
-    - medium: 兩位數乘法 ± 一位數
-    - hard: 帶括號的三元混合運算
+    - medium: 較大的兩位數乘法 ± 兩位數
+    - hard: 雙重乘法或巢狀括號混合運算
     """
     if difficulty == 'easy':
         a = random.randint(10, 99)
@@ -464,20 +464,49 @@ def _generate_math_question(difficulty):
         answer = a + b if op == '+' else a - b
 
     elif difficulty == 'medium':
-        a = random.randint(11, 49)
-        b = random.randint(2, 9)
-        c = random.randint(1, 30)
+        a = random.randint(15, 99)
+        b = random.randint(3, 9)
+        # 確保 c 不會大於 a * b - 5，以防止減法出現負數或零
+        max_c = min(99, a * b - 5)
+        c = random.randint(10, max_c)
         op = random.choice(['+', '-'])
         question = f"{a} × {b} {op} {c}"
         answer = (a * b + c) if op == '+' else (a * b - c)
 
     else:  # hard
-        a = random.randint(10, 50)
-        b = random.randint(2, 20)
-        c = random.randint(2, 9)
-        inner_op = random.choice(['+', '-'])
-        question = f"({a} {inner_op} {b}) × {c}"
-        inner = (a + b) if inner_op == '+' else (a - b)
-        answer = inner * c
+        mode = random.choice([1, 2])
+        if mode == 1:
+            a = random.randint(10, 30)
+            b = random.randint(3, 9)
+            d = random.randint(2, 5)
+            inner_op = random.choice(['+', '-'])
+            if inner_op == '-':
+                # 確保內層運算不為負
+                c = random.randint(5, max(10, a * b - 5))
+                question = f"({a} × {b} - {c}) × {d}"
+                answer = (a * b - c) * d
+            else:
+                c = random.randint(10, 50)
+                question = f"({a} × {b} + {c}) × {d}"
+                answer = (a * b + c) * d
+        else:
+            a = random.randint(10, 50)
+            b = random.randint(3, 9)
+            c = random.randint(10, 30)
+            d = random.randint(3, 8)
+            op = random.choice(['+', '-'])
+            
+            term1 = a * b
+            term2 = c * d
+            if op == '-':
+                # 確保結果為正值，如果 term1 < term2 則交換
+                if term1 < term2:
+                    a, b, c, d = c, d, a, b
+                    term1, term2 = term2, term1
+                question = f"{a} × {b} - {c} × {d}"
+                answer = term1 - term2
+            else:
+                question = f"{a} × {b} + {c} × {d}"
+                answer = term1 + term2
 
     return question, answer
